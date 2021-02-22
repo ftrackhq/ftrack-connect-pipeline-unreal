@@ -1,17 +1,19 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2019 ftrack
+# :copyright: Copyright (c) 2021 ftrack
 
 import os
 import traceback
 import logging
 
 def log(s):
-    with open("C:\\TEMP\\unreal_ftrack_connect_pipeline.log", "a") as f:
+    #with open("C:\\TEMP\\unreal_ftrack_connect_pipeline.log", "a") as f:
+    with open("/tmp/unreal_ftrack_connect_pipeline.log", "a") as f:
         f.write("{}\n".format(s))
     print(s)
 
 def warning(s):
-    log("[WARNING] {}".format(s))
+    log("[WARNING] {}".format(s))# :coding: utf-8
+
 
 try:
 
@@ -19,15 +21,15 @@ try:
 
     import ftrack_api
 
-    logger = logging.getLogger('ftrack_connect_unreal.bootstrap')
+    logger = logging.getLogger('ftrack_connect_pipeline_unreal.bootstrap')
     logger.setLevel(logging.DEBUG)
 
     def get_dialog(name):
 
-        from ftrack_connect_unreal_engine.client import load
-        from ftrack_connect_unreal_engine.client import publish
-        #from ftrack_connect_unreal_engine.client import asset_manager
-        #from ftrack_connect_unreal_engine.client import log_viewer
+        from ftrack_connect_pipeline_unreal_engine.client import load
+        from ftrack_connect_pipeline_unreal_engine.client import publish
+        #from ftrack_connect_pipeline_unreal_engine.client import asset_manager
+        #from ftrack_connect_pipeline_unreal_engine.client import log_viewer
 
         if "Publish" in name:
             return publish.UnrealPublisherClient
@@ -167,9 +169,9 @@ try:
 
             session = ftrack_api.Session(auto_connect_event_hub=False)
 
-            self.currentEntity = session.query('Task where id={}'.format(os.getenv('FTRACK_CONTEXTID')))
+            self.currentEntity = session.query('Task where id={}'.format(os.getenv('FTRACK_CONTEXTID') or os.getenv('FTRACK_TASKID')))
 
-            from ftrack_connect_unreal_engine import host as unreal_host
+            from ftrack_connect_pipeline_unreal_engine import host as unreal_host
             from ftrack_connect_pipeline_qt import event
             from ftrack_connect_pipeline import constants
 
@@ -177,7 +179,7 @@ try:
                 session=session, mode=constants.LOCAL_EVENT_MODE # REMOTE_EVENT_MODE
             )
 
-            unreal_host.UnrealHost(ftrackContext.event_manager)
+            FTrackConnectWrapper._host = unreal_host.UnrealHost(ftrackContext.event_manager)
 
 
             #ftrackContext.external_init()
@@ -189,7 +191,7 @@ try:
 
             # Install the ftrack logging handlers
             #ftrack_connect.config.configure_logging(
-            #    'ftrack_connect_unreal_engine', level='INFO'
+            #    'ftrack_connect_pipeline_unreal_engine', level='INFO'
             #)
 
             self.on_connect_initialized()
@@ -197,6 +199,8 @@ try:
         @unreal.ufunction(override=True)
         def shutdown(self):
             from Qt import QtWidgets, QtCore, QtGui
+
+            # TODO: shutdown host
 
             QtWidgets.QApplication.instance().quit()
             QtWidgets.QApplication.processEvents()
@@ -258,3 +262,4 @@ try:
 except:
     import traceback
     warning(traceback.format_exc())
+
