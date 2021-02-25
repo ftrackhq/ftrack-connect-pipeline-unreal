@@ -18,7 +18,7 @@ from pip._internal import main as pip_main
 
 # Define paths
 
-PLUGIN_NAME = 'ftrack-connect-unreal-engine-{0}'
+PLUGIN_NAME = 'ftrack-connect-pipeline-unreal-engine-{0}'
 
 ROOT_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -39,7 +39,7 @@ UNREAL_PLUGINS_PATH = os.path.join(RESOURCE_PATH, 'plugins')
 
 
 with open(
-    os.path.join(SOURCE_PATH, 'ftrack_connect_unreal_engine', '_version.py')
+    os.path.join(SOURCE_PATH, 'ftrack_connect_pipeline_unreal_engine', '_version.py')
 ) as _version_file:
     VERSION = re.match(
         r'.*__version__ = \'(.*?)\'', _version_file.read(), re.DOTALL
@@ -102,7 +102,7 @@ class BuildPlugin(Command):
         shutil.copyfile(README_PATH, os.path.join(STAGING_PATH, 'README.md'))
 
         # Install local dependencies
-        pip_main.main(
+        pip_main(
             [
                 'install',
                 '.',
@@ -121,7 +121,7 @@ class BuildPlugin(Command):
 
 # Configuration.
 setup(
-    name='ftrack connect unreal engine',
+    name='ftrack connect pipeline unreal engine',
     version=VERSION,
     description='Unreal engine integration with ftrack.',
     long_description=open(README_PATH).read(),
