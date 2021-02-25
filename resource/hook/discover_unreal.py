@@ -55,15 +55,24 @@ def on_application_launch(session, event):
     definitions_plugin_hook = os.getenv("FTRACK_DEFINITION_PLUGIN_PATH")
     plugin_hook = os.path.join(definitions_plugin_hook, 'unreal')
 
+    # Determine if py3k or not by looking at version number
+    is_py3k = True
+    try:
+        variant = event['data']['application']['variant'].split(" ")[0]
+        if (1000 * int(variant.split(".")[0]) + int(variant.split(".")[1])) < (1000 * 4 + 26):
+            is_py3k = False
+    except:
+        import traceback
+        print(traceback.format_exc())
+
     data = {
         'integration': {
             "name": 'ftrack-connect-pipeline-unreal-engine',
             'version': VERSION,
             'env': {
                 'FTRACK_EVENT_PLUGIN_PATH.prepend': plugin_hook,
-                'PYTHONPATH.prepend': os.pathsep.join([python_dependencies, ftrack_connect_installation_path]),
-                'QT_PLUGIN_PATH.prepend': ftrack_connect_installation_path,
-                'QT_PREFERRED_BINDING.set': "PySide2",
+                'PYTHONPATH.prepend': python_dependencies,
+                'QT_PREFERRED_BINDING.set': "PySide2" if is_py3k else "PySide",
                 'FTRACK_CONTEXTID.set': entity['entityId'],
                 'FTRACK_CONTEXTTYPE.set': entity['entityType'],
             }

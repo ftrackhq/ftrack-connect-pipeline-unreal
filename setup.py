@@ -141,6 +141,8 @@ setup(
     ],
     install_requires=[
         'appdirs == 1.4.0',
+        'PySide2 >=5, <6',
+        'Qt.py >=1.0.0, < 2',
     ],
     tests_require=['pytest >= 2.3.5, < 3'],
     cmdclass={'test': PyTest, 'build_plugin': BuildPlugin},
