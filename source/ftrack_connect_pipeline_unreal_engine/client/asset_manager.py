@@ -4,7 +4,7 @@
 from ftrack_connect_pipeline_qt.client.asset_manager import QtAssetManagerClient
 import ftrack_connect_pipeline.constants as constants
 import ftrack_connect_pipeline_qt.constants as qt_constants
-import ftrack_connect_unreal_engine.constants as unreal_constants
+import ftrack_connect_pipeline_unreal_engine.constants as unreal_constants
 
 
 class UnrealAssetManagerClient(QtAssetManagerClient):

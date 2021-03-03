@@ -10,6 +10,7 @@ import os
 import traceback
 import logging
 
+# @@@: Remove after refactor
 def log(s):
     #with open("C:\\TEMP\\unreal_ftrack_connect_pipeline.log", "a") as f:
     with open("/tmp/unreal_ftrack_connect_pipeline.log", "a") as f:
@@ -22,7 +23,7 @@ def warning(s):
 
 try:
 
-    import unreal
+    import unreal as ue
 
     import ftrack_api
 
@@ -33,13 +34,18 @@ try:
 
         from ftrack_connect_pipeline_unreal_engine.client import load
         from ftrack_connect_pipeline_unreal_engine.client import publish
-        #from ftrack_connect_pipeline_unreal_engine.client import asset_manager
-        #from ftrack_connect_pipeline_unreal_engine.client import log_viewer
+        from ftrack_connect_pipeline_unreal_engine.client import asset_manager
+        from ftrack_connect_pipeline_unreal_engine.client import log_viewer
 
         if "Publish" in name:
             return publish.UnrealPublisherClient
         elif "Loader" in name:
             return load.UnrealLoaderClient
+        elif "Asset" in name:
+            return load.UnrealAssetManagerClient
+        elif "LogViewer" in name:
+            return load.UnrealLogViewerClient
+
 
     class Command(object):
         """
@@ -86,17 +92,7 @@ try:
                     "dialog"
                 )
             )
-            # self.commands.append(Command("", "", "", "separator"))
-            # self.commands.append(
-            #     Command(
-            #         "ftrackAssetManager",
-            #         "Asset manager",
-            #         "ftrack browser",
-            #         "dialog",
-            #         FtrackUnrealAssetManagerDialog,
-            #     )
-            # )
-            # self.commands.append(Command("", "", "", "separator"))
+            self.commands.append(Command("", "", "", "separator"))
             self.commands.append(
                 Command(
                     "ftrackPublish",
@@ -105,7 +101,24 @@ try:
                     "dialog"
                 )
             )
-            # self.commands.append(Command("", "", "", "separator"))
+            self.commands.append(Command("", "", "", "separator"))
+            self.commands.append(
+                Command(
+                    "ftrackAssetManager",
+                    "Asset manager",
+                    "ftrack browser",
+                    "dialog",
+                )
+            )
+            self.commands.append(Command("", "", "", "separator"))
+            self.commands.append(
+                Command(
+                    "ftrackLogViewer",
+                    "Log Viewer",
+                    "ftrack log viewer",
+                    "dialog"
+                )
+            )
             # self.commands.append(
             #     Command(
             #         "ftrackInfo",
@@ -126,15 +139,13 @@ try:
             # )
 
         def _init_tags(self):
+
+            from ftrack_connect_pipeline_houdini.constants import asset as asset_const
+
             self.tags = []
             tagPrefix = "ftrack."
-            self.tags.append(tagPrefix + "IntegrationVersion")
-            self.tags.append(tagPrefix + "AssetComponentId")
-            self.tags.append(tagPrefix + "AssetVersionId")
-            self.tags.append(tagPrefix + "ComponentName")
-            self.tags.append(tagPrefix + "AssetId")
-            self.tags.append(tagPrefix + "AssetType")
-            self.tags.append(tagPrefix + "AssetVersion")
+            for comp in asset_const.KEYS:
+                self.tags.append(tagPrefix + comp)
 
         def _init_capture_arguments(self):
             self.capture_args = []
@@ -146,6 +157,37 @@ try:
             pass
             #self.connector = Connector()
 
+        def get_all_sequences(self):
+            result = []
+            actors = ue.EditorLevelLibrary.get_all_level_actors()
+            for actor in actors:
+                if actor.static_class() == ue.LevelSequenceActor.static_class():
+                    result.append(actor.load_sequence())
+                    break
+            return result
+
+        def setTimeLine(self):
+            '''Set time line to FS , FE environment values'''
+
+            # For prototype let's assume it has no shot parent
+            # This is for the current frame range
+            start = os.getenv('FS')
+            end = os.getenv('FE')
+            fps = os.getenv('FPS')
+
+            sequences = self.get_all_sequences()
+            if 0<len(sequences):
+                masterSequence = sequences[0]
+                if masterSequence:
+                    masterSequence.set_playback_start(int(start))
+                    masterSequence.set_playback_end(int(end))
+                    masterSequence.set_display_rate(ue.FrameRate(int(fps)))
+                    ue.EditorAssetLibrary.save_loaded_asset(masterSequence)
+                else:
+                    logger.info(
+                        'No LevelSequence were found in the current map'
+                        + ' therefore time range cannot be set.'
+                    )
 
     ftrackContext = FTrackContext()
 
@@ -160,8 +202,6 @@ try:
             """
             Equivalent to __init__ but will also be called from C++
             """
-            #ftrack.setup()
-
             from Qt import QtWidgets, QtCore, QtGui
 
             app = QtWidgets.QApplication.instance()
@@ -186,10 +226,9 @@ try:
 
             FTrackContext._host = unreal_host.UnrealHost(ftrackContext.event_manager)
 
-
-            #ftrackContext.external_init()
+            ftrackContext.external_init()
             #ftrackContext.connector.registerAssets()
-            #ftrackContext.connector.setTimeLine()
+            ftrackContext.setTimeLine()
 
             for tag in ftrackContext.tags:
                 self.add_global_tag_in_asset_registry(tag)

@@ -3,5 +3,5 @@
 
 FTRACK_PLUGIN_TYPE = 'ftracktab'
 
-from ftrack_connect_unreal_engine.constants.asset.v2 import *
+from ftrack_connect_pipeline_unreal_engine.constants.asset.v2 import *
 

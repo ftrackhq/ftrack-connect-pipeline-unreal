@@ -4,10 +4,10 @@
 import json
 import ftrack_api
 from ftrack_connect_pipeline.asset import FtrackAssetInfo, FtrackAssetBase
-from ftrack_connect_unreal_engine.constants import asset as asset_const
+from ftrack_connect_pipeline_unreal_engine.constants import asset as asset_const
 from ftrack_connect_pipeline import constants as core_const
-from ftrack_connect_unreal_engine.utils import custom_commands as unreal_utils
-from ftrack_connect_unreal_engine.constants.asset import modes as load_const
+from ftrack_connect_pipeline_unreal_engine.utils import custom_commands as unreal_utils
+from ftrack_connect_pipeline_unreal_engine.constants.asset import modes as load_const
 
 #import hou
 

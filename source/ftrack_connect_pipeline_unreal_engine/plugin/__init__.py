@@ -2,7 +2,7 @@
 # :copyright: Copyright (c) 2019 ftrack
 
 from ftrack_connect_pipeline import plugin
-from ftrack_connect_unreal_engine import constants as unreal_constants
+from ftrack_connect_pipeline_unreal_engine import constants as unreal_constants
 
 class BaseUnrealPlugin(plugin.BasePlugin):
     host_type = unreal_constants.HOST_TYPE
@@ -29,8 +29,8 @@ class BaseUnrealPluginWidget(BaseUnrealPlugin, pluginWidget.BasePluginWidget):
     #   return result
 
 
-from ftrack_connect_unreal_engine.plugin.load import *
-from ftrack_connect_unreal_engine.plugin.publish import *
-from ftrack_connect_unreal_engine.plugin.asset_manager import *
+from ftrack_connect_pipeline_unreal_engine.plugin.load import *
+from ftrack_connect_pipeline_unreal_engine.plugin.publish import *
+from ftrack_connect_pipeline_unreal_engine.plugin.asset_manager import *
 
 

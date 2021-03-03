@@ -19,7 +19,7 @@ def get_current_scene_objects():
     #return set(hou.node('/obj').glob('*'))
     return set([])
     
-def get_ftrack_objects():
+def get_ftrack_assets():
     result = []
     # for obj in hou.node('/').allSubChildren():
     #     if obj.parmTemplateGroup().findFolder('ftrack'):

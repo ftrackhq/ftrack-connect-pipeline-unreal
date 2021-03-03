@@ -4,9 +4,9 @@
 import logging
 import ftrack_api
 from ftrack_connect_pipeline_qt import constants as qt_constants
-from ftrack_connect_unreal_engine import constants as unreal_constants
+from ftrack_connect_pipeline_unreal_engine import constants as unreal_constants
 from ftrack_connect_pipeline.host import Host
-from ftrack_connect_unreal_engine.host import engine as host_engine
+from ftrack_connect_pipeline_unreal_engine.host import engine as host_engine
 
 
 logger = logging.getLogger(

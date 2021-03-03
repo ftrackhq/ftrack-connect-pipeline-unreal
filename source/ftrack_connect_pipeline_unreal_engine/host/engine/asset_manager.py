@@ -5,10 +5,10 @@ import time
 #import hou
 from ftrack_connect_pipeline import constants
 from ftrack_connect_pipeline.host.engine import AssetManagerEngine
-from ftrack_connect_unreal_engine.asset import FtrackAssetTab
+from ftrack_connect_pipeline_unreal_engine.asset import FtrackAssetTab
 from ftrack_connect_pipeline.asset.asset_info import FtrackAssetInfo
-from ftrack_connect_unreal_engine.utils import custom_commands as unreal_utils
-from ftrack_connect_unreal_engine.constants import asset as asset_const
+from ftrack_connect_pipeline_unreal_engine.utils import custom_commands as unreal_utils
+from ftrack_connect_pipeline_unreal_engine.constants import asset as asset_const
 
 
 class UnrealAssetManagerEngine(AssetManagerEngine):

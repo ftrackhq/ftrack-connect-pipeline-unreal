@@ -3,7 +3,7 @@
 
 from ftrack_connect_pipeline import plugin
 from ftrack_connect_pipeline_qt import plugin as pluginWidget
-from ftrack_connect_unreal_engine.plugin import (
+from ftrack_connect_pipeline_unreal_engine.plugin import (
     BaseUnrealPlugin, BaseUnrealPluginWidget
 )
 
