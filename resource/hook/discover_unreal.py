@@ -95,7 +95,8 @@ def register(session):
     logger.info('registering :{}'.format(NAME))
     session.event_hub.subscribe(
         'topic=ftrack.connect.application.discover'
-        ' and data.application.identifier=unreal*',
+        ' and data.application.identifier=unreal*'
+        ' and data.application.version>=4.26',
         on_discover_integration
     )
 
@@ -105,6 +106,7 @@ def register(session):
     )
     session.event_hub.subscribe(
         'topic=ftrack.connect.application.launch'
-        ' and data.application.identifier=unreal*',
+        ' and data.application.identifier=unreal*'
+        ' and data.application.version>=4.26',
         handle_event, priority=40
     )
