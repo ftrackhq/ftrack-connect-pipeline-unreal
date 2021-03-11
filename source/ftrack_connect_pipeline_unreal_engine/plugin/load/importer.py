@@ -28,12 +28,28 @@ class LoaderImporterUnrealPlugin(plugin.LoaderImporterPlugin, BaseUnrealPlugin):
     def _run(self, event):
         ''' Apply ftrack info to loaded asset. '''
 
+        context = event['data']['settings']['context']
+        self.logger.debug('Current context : {}'.format(context))
+
+        data = event['data']['settings']['data']
+        self.logger.debug('Current data : {}'.format(data))
+
+        options = event['data']['settings']['options']
+
         super_result = super(LoaderImporterUnrealPlugin, self)._run(event)
 
-        ftrack_asset_class = self.get_asset_class(context, data, options)
         result = super_result.get('result')
 
-        ftrack_asset_class.connect_objects(result.values())
+        if isinstance(result, dict):
+            # Import was successful, store ftrack metadata
+            ftrack_asset_class = self.get_asset_class(context, data, options)
+
+            # Only one component expected
+            for path_component, assets in result.items():
+                ftrack_asset_class.connect_objects(assets if isinstance(assets, list) else [assets])
+                #if isinstance(assets, list):
+                    # Ignore imported skeleton and physics assets
+                #    result[path_component] = assets[0]
 
         return super_result
 

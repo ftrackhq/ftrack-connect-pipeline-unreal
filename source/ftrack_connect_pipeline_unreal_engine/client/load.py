@@ -16,5 +16,6 @@ class UnrealLoaderClient(QtLoaderClient):
             event_manager=event_manager, parent=parent
         )
         self.setWindowTitle('Unreal Pipeline Loader')
+        self.resize(300, 600)
 
 

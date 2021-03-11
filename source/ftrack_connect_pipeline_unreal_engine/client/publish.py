@@ -20,28 +20,9 @@ class UnrealPublisherClient(QtPublisherClient):
         ''' Triggered when host_changed is called from the host_selector.'''
         super(UnrealPublisherClient, self).change_host(host_connection)
 
-        if False:
-            import threading
-
-            def t():
-                def f():
-                    super(UnrealPublisherClient, self).change_host(host_connection)
-                hdefereval.executeInMainThreadWithResult(f)
-            threading.Thread(target=t).start()
 
     def change_definition(self, schema, definition):
         super(UnrealPublisherClient, self).change_definition(schema, definition)
-
-        if False:
-            import hdefereval
-            import threading
-            def t():
-                def f():
-                    super(UnrealPublisherClient, self).change_definition(schema, definition)
-                #hdefereval.executeDeferred(f)
-                hdefereval.executeInMainThreadWithResult(f)
-
-            threading.Thread(target=t).start()
 
     def post_build(self):
         ''' Change window size '''

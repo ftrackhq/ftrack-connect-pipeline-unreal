@@ -31,9 +31,9 @@ def get_dialog(name):
     elif "Loader" in name:
         return load.UnrealLoaderClient
     elif "Asset" in name:
-        return load.UnrealAssetManagerClient
+        return asset_manager.UnrealAssetManagerClient
     elif "LogViewer" in name:
-        return load.UnrealLogViewerClient
+        return log_viewer.UnrealLogViewerClient
 
 
 class Command(object):
@@ -199,6 +199,8 @@ class FTrackPipelineWrapper(ue.FTrackConnect):
             ftrackContext.app.setWindowIcon(
                 QtGui.QIcon(os.path.dirname(__file__) + '/UE4Ftrack.ico')
             )
+
+        logger.info('Initializing ftrack Connect framework.')
 
         session = ftrack_api.Session(auto_connect_event_hub=False)
 
