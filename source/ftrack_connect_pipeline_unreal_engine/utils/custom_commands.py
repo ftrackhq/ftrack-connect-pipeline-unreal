@@ -11,7 +11,7 @@ import logging
 
 #import hou
 
-from ftrack_connect_unreal_engine.constants import asset as asset_const
+from ftrack_connect_pipeline_unreal_engine.constants import asset as asset_const
 
 logger = logging.getLogger(__name__)
 
