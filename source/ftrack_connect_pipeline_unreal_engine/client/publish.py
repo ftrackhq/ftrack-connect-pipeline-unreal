@@ -27,7 +27,5 @@ class UnrealPublisherClient(QtPublisherClient):
     def post_build(self):
         ''' Change window size '''
         super(UnrealPublisherClient, self).post_build()
+        self.setWindowTitle('Unreal Pipeline Publisher')
         self.resize(300, 600)
-
-        import threading
-        print('@@@: Qt thread: {}'.format(threading.currentThread))

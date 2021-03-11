@@ -2,7 +2,9 @@
 # :copyright: Copyright (c) 2014-2020 ftrack
 
 import time
-#import hou
+
+import unreal as ue
+
 from ftrack_connect_pipeline import constants
 from ftrack_connect_pipeline.host.engine import AssetManagerEngine
 from ftrack_connect_pipeline_unreal_engine.asset import FtrackAssetTab
@@ -42,12 +44,12 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
                 'message': message
             }
 
-            ftrack_asset_nodes = unreal_utils.get_ftrack_objects()
+            ftrack_asset_assets = unreal_utils.get_ftrack_assets()
             ftrack_asset_info_list = []
 
-            for obj in ftrack_asset_nodes:
+            for ass in ftrack_asset_assets:
                 param_dict = FtrackAssetTab.get_parameters_dictionary(
-                    obj
+                    ass
                 )
                 # avoid objects containing the old ftrack tab without information
                 if not param_dict:
@@ -98,17 +100,14 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
             }
 
             try:
-                obj_path = FtrackAssetTab.get_ftrack_object_from_scene_on_asset_info(asset_info)
-                if not obj_path:
-                    message = "There is no ftrack object in the current scene @ path '{}'".format(obj_path)
+                ass = FtrackAssetTab.get_ftrack_object_from_scene_on_asset_info(asset_info)
+                if not ass:
+                    message = "There is no ftrack object in the current scene with asset info '{}'".format(asset_info)
                     self.logger.warning(message)
                     status = constants.UNKNOWN_STATUS
                 else:
-                    obj = hou.node(obj_path)
                     try:
-                        str_node = obj_path
-                        obj.destroy()
-                        result.append(str_node)
+                        ue.EditorAssetLibrary.delete_asset(ass.get_path_name())
                         status = constants.SUCCESS_STATUS
                     except Exception as error:
                         message = str(
@@ -158,21 +157,20 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
                 'message': message
             }
             try:
-                obj_path = FtrackAssetTab.get_ftrack_object_from_scene_on_asset_info(asset_info)
-                if not obj_path:
-                    message = "There is no ftrack object in the current scene @ path '{}'".format(obj_path)
+                ass = FtrackAssetTab.get_ftrack_object_from_scene_on_asset_info(asset_info)
+                if not ass:
+                    message = "There is no ftrack object in the current scene with asset info '{}'".format(asset_info)
                     self.logger.warning(message)
                     status = constants.UNKNOWN_STATUS
                 else:
-                    obj = hou.node(obj_path)
                     try:
-                        str_node = obj_path
-                        hou.Node.setSelected(obj, True, clear_all_selected=(options.get('clear_selection') is True))
-                        result.append(str_node)
+                        selection_path_names = []
+                        selection_path_names.append(str(ass.get_path_name()))
+                        ue.EditorAssetLibrary.sync_browser_to_objects(selection_path_names)
                         status = constants.SUCCESS_STATUS
                     except Exception as error:
                         message = str(
-                            'Could not delete the ftrack_object, error: {}'.format(error)
+                            'Could not select ftrack_object, error: {}'.format(error)
                         )
                         self.logger.error(message)
                         status = constants.ERROR_STATUS

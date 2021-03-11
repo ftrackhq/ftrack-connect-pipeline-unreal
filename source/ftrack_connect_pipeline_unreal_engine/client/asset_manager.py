@@ -16,5 +16,5 @@ class UnrealAssetManagerClient(QtAssetManagerClient):
             event_manager=event_manager, parent=parent
         )
         self.setWindowTitle('Unreal Pipeline Asset Manager')
-
+        self.resize(300, 600)
 

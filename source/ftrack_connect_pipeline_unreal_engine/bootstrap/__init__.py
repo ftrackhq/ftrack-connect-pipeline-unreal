@@ -7,6 +7,7 @@
 # :copyright: Copyright (c) 2021 ftrack
 
 import os
+import sys
 import traceback
 import logging
 
@@ -133,9 +134,9 @@ class FTrackContext(object):
         from ftrack_connect_pipeline_unreal_engine.constants import asset as asset_const
 
         self.tags = []
-        tagPrefix = "ftrack."
+        PREFIX = "ftrack."
         for comp in asset_const.KEYS:
-            self.tags.append(tagPrefix + comp)
+            self.tags.append(PREFIX + comp)
 
     def _init_capture_arguments(self):
         self.capture_args = []
@@ -255,6 +256,7 @@ class FTrackPipelineWrapper(ue.FTrackConnect):
         finally:
             # Tear down background threads/event listeners
             os._exit()
+            sys.exit()
 
     @ue.ufunction(override=True)
     def get_ftrack_menu_items(self):

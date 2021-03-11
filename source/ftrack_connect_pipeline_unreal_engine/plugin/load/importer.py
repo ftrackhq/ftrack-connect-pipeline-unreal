@@ -41,15 +41,18 @@ class LoaderImporterUnrealPlugin(plugin.LoaderImporterPlugin, BaseUnrealPlugin):
         result = super_result.get('result')
 
         if isinstance(result, dict):
-            # Import was successful, store ftrack metadata
-            ftrack_asset_class = self.get_asset_class(context, data, options)
+            run = result.get('run')
+            if isinstance(run, dict):
+                # Import was successful, store ftrack metadata
+                ftrack_asset_class = self.get_asset_class(context, data, options)
 
-            # Only one component expected
-            for path_component, assets in result.items():
-                ftrack_asset_class.connect_objects(assets if isinstance(assets, list) else [assets])
-                #if isinstance(assets, list):
-                    # Ignore imported skeleton and physics assets
-                #    result[path_component] = assets[0]
+                # Only one component expected
+                for (path_component, asset_or_assets) in run.items():
+                    # Can arrive as a single or multiple assets
+                    ftrack_asset_class.connect_objects(asset_or_assets if isinstance(asset_or_assets, list) else [asset_or_assets])
+                    #if isinstance(assets, list):
+                        # Ignore imported skeleton and physics assets
+                    #    result[path_component] = assets[0]
 
         return super_result
 

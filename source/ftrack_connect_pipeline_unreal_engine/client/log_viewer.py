@@ -16,4 +16,4 @@ class UnrealLogViewerClient(QtLogViewerClient):
             event_manager=event_manager, parent=parent
         )
         self.setWindowTitle('Unreal Pipeline Log Viewer')
-
+        self.resize(300, 600)

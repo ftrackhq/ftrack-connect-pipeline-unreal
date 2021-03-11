@@ -11,15 +11,12 @@ from ftrack_connect_pipeline_unreal_engine.constants.asset import modes as load_
 
 import unreal as ue
 
+PREFIX='ftrack.' 
 
 class FtrackAssetTab(FtrackAssetBase):
     '''
     Base FtrackAssetTab class.
     '''
-
-    def is_sync(self, obj_path):
-        '''Returns bool if the current ftrack_object is sync'''
-        return self._check_ftrack_object_sync(obj_path)
 
     def __init__(self, event_manager):
         '''
@@ -30,43 +27,33 @@ class FtrackAssetTab(FtrackAssetBase):
         '''
         super(FtrackAssetTab, self).__init__(event_manager)
 
-    # def init_ftrack_object(self):
-    #     '''
-    #     Return the ftrack ftrack_object for this class. It checks if there is
-    #     already a matching ftrack ftrack_object in the scene, in this case it
-    #     updates the ftrack_object if it's not. In case there is no ftrack_object
-    #     in the scene this function creates a new one.
-    #     '''
-    #     ftrack_object = self.get_ftrack_object_from_scene() or self.create_new_ftrack_object()
-    #
-    #     if not self.is_sync(ftrack_object):
-    #         ftrack_object = self._update_ftrack_object(ftrack_object)
-    #
-    #     self.ftrack_object = ftrack_object
-    #
-    #     return self.ftrack_object
+    def is_sync(self, ass):
+        '''Returns bool if the current ftrack_object is sync'''
+        return self._check_ftrack_object_sync(ass)
 
     @staticmethod
-    def get_parameters_dictionary(obj):
+    def get_parameters_dictionary(ass):
         '''
-        Returns a diccionary with the keys and values of the given *obj*
+        Returns a diccionary with the keys and values of the given *ass*
         parameters
         '''
         param_dict = {}
-        if obj.parmTemplateGroup().findFolder('ftrack'):
-            for parm in obj.parms():
-                if parm.name() in asset_const.KEYS:
-                    param_dict[parm.name()] = parm.eval()
+        for key in list(asset_const.KEYS):
+            value = ue.EditorAssetLibrary.get_metadata_tag(
+                ass, "{}{}".format(PREFIX, key)
+            )
+            if value:
+                param_dict[key] = value
         return param_dict
 
     @staticmethod
     def get_ftrack_object_from_scene_on_asset_info(asset_info):
-        ftrack_asset_nodes = unreal_utils.get_ftrack_objects()
-        for obj in ftrack_asset_nodes:
-            param_dict = FtrackAssetTab.get_parameters_dictionary(obj)
+        ftrack_asset_assets = unreal_utils.get_ftrack_assets()
+        for ass in ftrack_asset_assets:
+            param_dict = FtrackAssetTab.get_parameters_dictionary(ass)
             # avoid read and write nodes containing the old ftrack tab
             # without information
-            if not param_dict:
+            if not param_dict or len(param_dict) == 0:
                 continue
             node_asset_info = FtrackAssetInfo(param_dict)
             if node_asset_info.is_deprecated:
@@ -76,32 +63,44 @@ class FtrackAssetTab(FtrackAssetBase):
                     node_asset_info[asset_const.REFERENCE_OBJECT] ==
                     asset_info[asset_const.REFERENCE_OBJECT]
             ):
-                return obj.path()
+                return ass
         return None
 
     def get_ftrack_object_from_scene(self):
         '''
-        Return the ftrack object path from the current asset_version if it exists in
+        Return the ftrack object names from the current asset_version if it exists in
         the scene.
         '''
-        return self.get_ftrack_object_from_scene_on_asset_info(self.asset_info)
+        result_asset = None
+        ftrack_asset_assets = unreal_utils.get_ftrack_assets()
+        for ass in ftrack_asset_assets:
+            param_dict = self.get_parameters_dictionary(ass)
+            node_asset_info = FtrackAssetInfo(param_dict)
+            if node_asset_info.is_deprecated:
+                raise DeprecationWarning("Can not read v1 ftrack asset plugin")
+            if (
+                    node_asset_info[asset_const.REFERENCE_OBJECT] ==
+                    self.asset_info[asset_const.REFERENCE_OBJECT]
+            ):
+                result_asset = ftrack_object
+                break
 
-    def _check_ftrack_object_sync(self, obj_path):
+        return result_asset
+
+    def _check_ftrack_object_sync(self, ass):
         '''
         Check if the current parameters of the ftrack_object match the
         values of the asset_info.
         '''
-        if not obj_path:
+        if not ass:
             self.logger.warning("Ftrack tab doesn't exists")
             return False
 
-        synced = False
-        obj = hou.node(obj_path)
-        param_dict = self.get_parameters_dictionary(obj)
+        param_dict = self.get_parameters_dictionary(ass)
         node_asset_info = FtrackAssetInfo(param_dict)
 
         if node_asset_info == self.asset_info:
-            self.logger.debug("{} is synced".format(ftrack_object))
+            self.logger.debug("{} is synced".format(ass))
             synced = True
 
         return synced
@@ -143,31 +142,37 @@ class FtrackAssetTab(FtrackAssetBase):
     #         ue.EditorAssetLibrary.save_loaded_asset(linked_obj)
 
 
-    def _set_ftab(self, obj):
+    def _set_ftab(self, ass):
         '''
         Add ftrack asset parameters to object.
         '''
 
-        if obj:
+        if ass:
             for k, v in self.asset_info.items():
+                print('@@@; k: {}, v: {}, ass: {}'.format(k, v, str(ass)))
                 ue.EditorAssetLibrary.set_metadata_tag(
-                    obj, "{}{}".format(PREFIX, k), v
+                    ass, "{}{}".format(PREFIX, k), str(v)
                 )
-            ue.EditorAssetLibrary.save_loaded_asset(obj)
+            ue.EditorAssetLibrary.save_loaded_asset(ass)
 
-    def connect_objects(self, objects):
+    def connect_objects(self, assets):
         '''
-        Add asset info to Unreal objects
+        Add asset info to Unreal assets
         '''
-        for obj in objects:
-            self._set_ftab(obj)
+        for ass in assets:
+            self._set_ftab(ass)
 
-    def _update_ftrack_object(self, obj_path):
+    def _update_ftrack_object(self, ass):
         '''
-        Update the parameters of the ftrack_object. And Return the
+        Update the parameters of the unreal ftrack asset. And Return the
         ftrack_object updated
         '''
 
-        pass
+        for k, v in list(self.asset_info.items()):
+            print('@@@; k: {}, v: {}, ass: {}'.format(k, v, str(ass)))
+            ue.EditorAssetLibrary.set_metadata_tag(
+                ass, "{}{}".format(PREFIX, k), str(v)
+            )
+            ue.EditorAssetLibrary.save_loaded_asset(ass)
 
 

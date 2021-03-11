@@ -9,7 +9,5 @@ MERGE_MODE = 'Merge'
 OPEN_MODE = 'Open'
 
 LOAD_MODES = {
-    IMPORT_MODE: unreal_utils.import_scene,
-    MERGE_MODE: unreal_utils.merge_scene,
-    OPEN_MODE: unreal_utils.open_scene,
+	IMPORT_MODE:unreal_utils.import_level
 }
