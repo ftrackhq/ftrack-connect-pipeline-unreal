@@ -21,6 +21,7 @@ def get_current_scene_objects():
     
 def get_ftrack_assets():
     result = []
+
     # for obj in hou.node('/').allSubChildren():
     #     if obj.parmTemplateGroup().findFolder('ftrack'):
     #         valueftrackId = obj.parm('component_id').eval()

@@ -9,7 +9,7 @@ from ftrack_connect_pipeline import constants as core_const
 from ftrack_connect_pipeline_unreal_engine.utils import custom_commands as unreal_utils
 from ftrack_connect_pipeline_unreal_engine.constants.asset import modes as load_const
 
-#import hou
+import unreal as ue
 
 
 class FtrackAssetTab(FtrackAssetBase):
@@ -105,45 +105,61 @@ class FtrackAssetTab(FtrackAssetBase):
             synced = True
 
         return synced
+    #
+    # def add_ftab(self, obj):
+    #     '''
+    #     Add ftrack asset parameters to object.
+    #     '''
+    #
+    #     PREFIX='ftrack.'
+    #     if obj:
+    #         ue.EditorAssetLibrary.set_metadata_tag(
+    #             linked_obj, "{}{}".format(PREFIX, asset_const.VERSION_ID), context['version_id']
+    #         )
+    #         ue.EditorAssetLibrary.set_metadata_tag(
+    #             linked_obj, "{}{}".format(PREFIX, asset_const.COMPONENT_PATH), path_imported
+    #         )
+    #         ue.EditorAssetLibrary.set_metadata_tag(
+    #             linked_obj, "{}{}".format(PREFIX, asset_const.ASSET_NAME), context['asset_name']
+    #         )
+    #         ue.EditorAssetLibrary.set_metadata_tag(
+    #             linked_obj, "{}{}".format(PREFIX, asset_const.COMPONENT_NAME), context['component_name']
+    #         )
+    #         ue.EditorAssetLibrary.set_metadata_tag(
+    #             linked_obj, "{}{}".format(PREFIX, asset_const.ASSET_TYPE), context['asset_type']
+    #         )
+    #         ue.EditorAssetLibrary.set_metadata_tag(
+    #             linked_obj, "{}{}".format(PREFIX, asset_const.ASSET_ID), context['asset_id']
+    #         )
+    #         ue.EditorAssetLibrary.set_metadata_tag(
+    #             linked_obj, "{}{}".format(PREFIX, asset_const.COMPONENT_ID), context['component_id']
+    #         )
+    #         ue.EditorAssetLibrary.set_metadata_tag(
+    #             linked_obj, "{}{}".format(PREFIX, asset_const.VERSION_ID), context['version_id']
+    #         )
+    #         ue.EditorAssetLibrary.set_metadata_tag(
+    #             linked_obj, "ftrack.IntegrationVersion", __version__
+    #         )  # to be changed at cleanup
+    #         ue.EditorAssetLibrary.save_loaded_asset(linked_obj)
 
-    def _add_ftab(self, obj):
-        '''
-        Add ftrack asset parameters to object.
-        '''
-        parm_group = obj.parmTemplateGroup()
-        parm_folder = hou.FolderParmTemplate('folder', 'ftrack')
-        alembic_folder = parm_group.findFolder('Alembic Loading Parameters')
-
-        for comp in asset_const.KEYS:
-            parm_folder.addParmTemplate(
-                hou.StringParmTemplate(comp, comp, 1, ''))
-        if alembic_folder:
-            parm_group.insertAfter(alembic_folder, parm_folder)
-        else:
-            parm_group.append(parm_folder)
-        obj.setParmTemplateGroup(parm_group)
 
     def _set_ftab(self, obj):
         '''
         Add ftrack asset parameters to object.
         '''
 
-        def safeString(string):
-            if not isinstance(string, unicode):
-                string = str(string)
-            if isinstance(string, unicode):
-                return string.encode('utf-8')
-            return string
-
-        for k, v in self.asset_info.items():
-            obj.parm(k).set(safeString(v))
+        if obj:
+            for k, v in self.asset_info.items():
+                ue.EditorAssetLibrary.set_metadata_tag(
+                    obj, "{}{}".format(PREFIX, k), v
+                )
+            ue.EditorAssetLibrary.save_loaded_asset(obj)
 
     def connect_objects(self, objects):
         '''
         Add asset info to Unreal objects
         '''
         for obj in objects:
-            self._add_ftab(obj)
             self._set_ftab(obj)
 
     def _update_ftrack_object(self, obj_path):
