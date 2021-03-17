@@ -255,8 +255,8 @@ class FTrackPipelineWrapper(ue.FTrackConnect):
                 QtWidgets.QApplication.quit()
         finally:
             # Tear down background threads/event listeners
-            os._exit()
-            sys.exit()
+            os._exit(0)
+            sys.exit(0)
 
     @ue.ufunction(override=True)
     def get_ftrack_menu_items(self):
