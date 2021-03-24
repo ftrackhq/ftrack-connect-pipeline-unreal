@@ -27,16 +27,9 @@ def on_application_launch(session, event):
     )
 
     python_dependencies = os.path.abspath(os.path.join(plugin_base_dir, 'dependencies'))
-    unreal_path = os.path.abspath(
-        os.path.join(plugin_base_dir, 'resource')
-    )
+
 
     sys.path.append(python_dependencies)
-
-    #ftrack_connect_installation_path = os.path.dirname(sys.executable)
-    #print('@@@; ftrack_connect_installation_path: {}'.format(ftrack_connect_installation_path))
-    #ftrack_connect_installation_path = "C:\\Program Files (x86)\\ftrack-connect-package-1.1.2"
-    ftrack_connect_installation_path = "/Applications/ftrack-connect 2.app/Contents/MacOS"
 
     entity = event['data']['context']['selection'][0]
     e = session.get('Context', entity['entityId'])
@@ -72,7 +65,6 @@ def on_application_launch(session, event):
         data['integration']['env']['FS.set'] = task['parent']['custom_attributes'].get('fstart', '1.0')
         data['integration']['env']['FE.set'] = task['parent']['custom_attributes'].get('fend', '100.0')
         data['integration']['env']['FPS.set'] = task['parent']['custom_attributes'].get('fps', '24')
-    print('@@@; Unreal hook returning: {}'.format(data))
     return data
 
 
