@@ -13,17 +13,6 @@ VERSION = '0.1.0'
 
 logger = logging.getLogger('{}.hook'.format(NAME.replace('-','_')))
 
-def on_discover_integration(event):
-    ''' Report back plugin/integration existance '''
-    logger.info('discovering: {}'.format(NAME))
-    data = {
-        'integration': {
-            'name': NAME,
-            'version': VERSION,
-        }
-    }
-    return data
-
 def on_application_launch(session, event):
     ''' Handle application launch and add environment to *event*. '''
     logger.info('launching: {}'.format(NAME))
@@ -92,17 +81,16 @@ def register(session):
     if not isinstance(session, ftrack_api.session.Session):
         return
 
+    handle_event = functools.partial(
+        on_application_launch,
+        session
+    )
     logger.info('registering :{}'.format(NAME))
     session.event_hub.subscribe(
         'topic=ftrack.connect.application.discover'
         ' and data.application.identifier=unreal*'
         ' and data.application.version>=4.26',
-        on_discover_integration
-    )
-
-    handle_event = functools.partial(
-        on_application_launch,
-        session
+        handle_event, priority=40
     )
     session.event_hub.subscribe(
         'topic=ftrack.connect.application.launch'
