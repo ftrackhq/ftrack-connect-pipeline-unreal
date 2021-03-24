@@ -1,16 +1,10 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2019 ftrack
-
-#import unreal_ftrack_connect_pipeline
-
-# :coding: utf-8
 # :copyright: Copyright (c) 2021 ftrack
 
 import os
 import sys
 import traceback
 import logging
-
 
 
 import unreal as ue
@@ -110,6 +104,7 @@ class FTrackContext(object):
                 "dialog"
             )
         )
+        # TODO: Bring back info and task widgets
         # self.commands.append(
         #     Command(
         #         "ftrackInfo",
@@ -146,7 +141,6 @@ class FTrackContext(object):
 
     def external_init(self):
         pass
-        #self.connector = Connector()
 
     def get_all_sequences(self):
         result = []
@@ -160,7 +154,6 @@ class FTrackContext(object):
     def setTimeLine(self):
         '''Set time line to FS , FE environment values'''
 
-        # For prototype let's assume it has no shot parent
         # This is for the current frame range
         start = os.getenv('FS')
         end = os.getenv('FE')
@@ -224,11 +217,6 @@ class FTrackPipelineWrapper(ue.FTrackConnect):
         for tag in ftrackContext.tags:
             self.add_global_tag_in_asset_registry(tag)
 
-        # Install the ftrack logging handlers
-        #ftrack_connect.config.configure_logging(
-        #    'ftrack_connect_pipeline_unreal_engine', level='INFO'
-        #)
-
         self.on_connect_initialized()
 
     @ue.ufunction(override=True)
@@ -239,10 +227,6 @@ class FTrackPipelineWrapper(ue.FTrackConnect):
             # TODO: shutdown event manager
             #ftrackContext.event_manager.disconnect()
 
-            # @@@ debug lingering threads
-            #from ftrack_api import dump_frames 
-            #dump_frames("shutdown")
-
             app = QtWidgets.QApplication.instance()
             if app:
                 app.quit()
@@ -250,7 +234,7 @@ class FTrackPipelineWrapper(ue.FTrackConnect):
                     try:
                         w.close()
                     except:
-                        print(traceback.format_exc())
+                        logger.warning(traceback.format_exc())
                 QtWidgets.QApplication.processEvents()
                 QtWidgets.QApplication.quit()
         finally:
@@ -283,14 +267,6 @@ class FTrackPipelineWrapper(ue.FTrackConnect):
         '''Open *dialog_class* and create if not already existing.'''
         dialog_class = get_dialog(dialog_ident)
         dialog_name = dialog_ident
-
-        #if (
-        #    dialog_name == FtrackImportAssetDialog
-        #    or dialog_name == FtrackPublishDialog
-        #) and dialog_name in ftrackContext.dialogs:
-        #    ftrackContext.dialogs[dialog_name].deleteLater()
-        #    ftrackContext.dialogs[dialog_name] = None
-        #    del ftrackContext.dialogs[dialog_name]
 
         if dialog_name not in ftrackContext.dialogs:
             ftrack_dialog = dialog_class(ftrackContext.event_manager)

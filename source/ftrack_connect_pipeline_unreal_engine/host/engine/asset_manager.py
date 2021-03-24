@@ -74,7 +74,7 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
 
         except:
             import traceback
-            print(traceback.format_exc())
+            self.logger.warning(traceback.format_exc())
             raise
 
         return status, result
@@ -130,7 +130,7 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
             self._notify_client(plugin, result_data)
         except:
             import traceback
-            print(traceback.format_exc())
+            self.logger.warning(traceback.format_exc())
             raise
         return status, result
 
@@ -190,7 +190,7 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
 
         except:
             import traceback
-            print(traceback.format_exc())
+            self.logger.warning(traceback.format_exc())
             raise
 
         return status, result

@@ -2,6 +2,7 @@
 # :copyright: Copyright (c) 2020 ftrack
 
 import json
+import base64
 
 from ftrack_connect_pipeline import plugin
 from ftrack_connect_pipeline_qt import plugin as pluginWidget
@@ -39,6 +40,10 @@ class LoaderImporterUnrealPlugin(plugin.LoaderImporterPlugin, BaseUnrealPlugin):
         super_result = super(LoaderImporterUnrealPlugin, self)._run(event)
 
         result = super_result.get('result')
+
+        options[asset_const.ASSET_INFO_OPTIONS] = base64.encodebytes(
+            json.dumps(event['data']).encode('utf-8')
+        ).decode('utf-8')
 
         if isinstance(result, dict):
             run = result.get('run')

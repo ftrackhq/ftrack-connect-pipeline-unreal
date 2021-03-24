@@ -104,43 +104,6 @@ class FtrackAssetTab(FtrackAssetBase):
             synced = True
 
         return synced
-    #
-    # def add_ftab(self, obj):
-    #     '''
-    #     Add ftrack asset parameters to object.
-    #     '''
-    #
-    #     PREFIX='ftrack.'
-    #     if obj:
-    #         ue.EditorAssetLibrary.set_metadata_tag(
-    #             linked_obj, "{}{}".format(PREFIX, asset_const.VERSION_ID), context['version_id']
-    #         )
-    #         ue.EditorAssetLibrary.set_metadata_tag(
-    #             linked_obj, "{}{}".format(PREFIX, asset_const.COMPONENT_PATH), path_imported
-    #         )
-    #         ue.EditorAssetLibrary.set_metadata_tag(
-    #             linked_obj, "{}{}".format(PREFIX, asset_const.ASSET_NAME), context['asset_name']
-    #         )
-    #         ue.EditorAssetLibrary.set_metadata_tag(
-    #             linked_obj, "{}{}".format(PREFIX, asset_const.COMPONENT_NAME), context['component_name']
-    #         )
-    #         ue.EditorAssetLibrary.set_metadata_tag(
-    #             linked_obj, "{}{}".format(PREFIX, asset_const.ASSET_TYPE), context['asset_type']
-    #         )
-    #         ue.EditorAssetLibrary.set_metadata_tag(
-    #             linked_obj, "{}{}".format(PREFIX, asset_const.ASSET_ID), context['asset_id']
-    #         )
-    #         ue.EditorAssetLibrary.set_metadata_tag(
-    #             linked_obj, "{}{}".format(PREFIX, asset_const.COMPONENT_ID), context['component_id']
-    #         )
-    #         ue.EditorAssetLibrary.set_metadata_tag(
-    #             linked_obj, "{}{}".format(PREFIX, asset_const.VERSION_ID), context['version_id']
-    #         )
-    #         ue.EditorAssetLibrary.set_metadata_tag(
-    #             linked_obj, "ftrack.IntegrationVersion", __version__
-    #         )  # to be changed at cleanup
-    #         ue.EditorAssetLibrary.save_loaded_asset(linked_obj)
-
 
     def _set_ftab(self, ass):
         '''
@@ -149,7 +112,6 @@ class FtrackAssetTab(FtrackAssetBase):
 
         if ass:
             for k, v in self.asset_info.items():
-                print('@@@; k: {}, v: {}, ass: {}'.format(k, v, str(ass)))
                 ue.EditorAssetLibrary.set_metadata_tag(
                     ass, "{}{}".format(PREFIX, k), str(v)
                 )
@@ -169,7 +131,6 @@ class FtrackAssetTab(FtrackAssetBase):
         '''
 
         for k, v in list(self.asset_info.items()):
-            print('@@@; k: {}, v: {}, ass: {}'.format(k, v, str(ass)))
             ue.EditorAssetLibrary.set_metadata_tag(
                 ass, "{}{}".format(PREFIX, k), str(v)
             )

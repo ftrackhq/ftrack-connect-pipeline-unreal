@@ -10,7 +10,7 @@ import ftrack_connect_pipeline_unreal_engine.constants as unreal_constants
 class UnrealLogViewerClient(QtLogViewerClient):
     ui_types = [constants.UI_TYPE, qt_constants.UI_TYPE, unreal_constants.UI_TYPE]
 
-    '''Dockable unreal load widget'''
+    '''unreal load widget'''
     def __init__(self, event_manager, parent=None):
         super(UnrealLogViewerClient, self).__init__(
             event_manager=event_manager, parent=parent

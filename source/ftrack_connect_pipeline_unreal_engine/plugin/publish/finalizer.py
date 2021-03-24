@@ -11,7 +11,7 @@ from ftrack_connect_pipeline_unreal_engine.plugin import (
 )
 from ftrack_connect_pipeline_unreal_engine.constants import asset as asset_const
 from ftrack_connect_pipeline_unreal_engine.utils import custom_commands as unreal_utils
-
+from ftrack_connect_pipeline_unreal_engine.asset import FtrackAssetTab
 
 class PublisherFinalizerUnrealPlugin(plugin.PublisherFinalizerPlugin, BaseUnrealPlugin):
     ''' Class representing a Finalizer Plugin
@@ -35,9 +35,11 @@ class PublisherFinalizerUnrealPlugin(plugin.PublisherFinalizerPlugin, BaseUnreal
         self.version_dependencies = []
         ftrack_asset_nodes = unreal_utils.get_ftrack_assets()
         for dependency in ftrack_asset_nodes:
-            dependency_version_id = cmds.getAttr('{}.{}'.format(
-                dependency, asset_const.VERSION_ID
-            ))
+            param_dict = FtrackAssetTab.get_parameters_dictionary(
+                dependency
+            )
+
+            dependency_version_id = param_dict.get(asset_const.VERSION_ID)
             self.logger.debug(
                 'Adding dependency_asset_version_id: {}'.format(
                     dependency_version_id
