@@ -52,13 +52,8 @@ class LoaderImporterUnrealPlugin(plugin.LoaderImporterPlugin, BaseUnrealPlugin):
                 # Import was successful, store ftrack metadata
                 ftrack_asset_class = self.get_asset_class(context, data, options)
 
-                # Only one component expected
-                for (path_component, asset_or_assets) in run.items():
-                    # Can arrive as a single or multiple assets
+                for (path_component, asset_paths) in run.items():
                     ftrack_asset_class.connect_objects(asset_paths)
-                    #if isinstance(assets, list):
-                        # Ignore imported skeleton and physics assets
-                    #    result[path_component] = assets[0]
 
         return super_result
 

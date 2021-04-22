@@ -1,6 +1,7 @@
 # :coding: utf-8
 # :copyright: Copyright (c) 2014-2020 ftrack
 
+import os
 import json
 import ftrack_api
 from ftrack_connect_pipeline.asset import FtrackAssetInfo, FtrackAssetBase
@@ -124,8 +125,9 @@ class FtrackAssetTab(FtrackAssetBase):
         assetRegistry = ue.AssetRegistryHelpers.get_asset_registry()
 
         for ass_path in asset_paths:
-            ass = assetRegistry.get_asset_by_object_path(ass_path)
-            self._set_ftab(ass)
+            asset_data = assetRegistry.get_assets_by_package_name(os.path.splitext(ass_path)[0])
+            if 0<len(asset_data):
+                self._set_ftab(asset_data[0].get_asset())
 
     def _update_ftrack_object(self, ass):
         '''

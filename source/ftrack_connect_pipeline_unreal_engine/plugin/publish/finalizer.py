@@ -33,28 +33,23 @@ class PublisherFinalizerUnrealPlugin(plugin.PublisherFinalizerPlugin, BaseUnreal
                publishing the dependencies if the plugin fails.
         '''
         self.version_dependencies = []
-        ftrack_asset_nodes = unreal_utils.get_ftrack_assets()
-        for dependency in ftrack_asset_nodes:
-            param_dict = FtrackAssetTab.get_parameters_dictionary(
-                dependency
-            )
-
-            dependency_version_id = param_dict.get(asset_const.VERSION_ID)
-            self.logger.debug(
-                'Adding dependency_asset_version_id: {}'.format(
-                    dependency_version_id
-                )
-            )
-            if dependency_version_id:
-
-                dependency_version = self.session.query(
-                    'select version from AssetVersion where id is "{}"'.format(
-                        dependency_version_id
-                    )
-                ).one()
-
-                if dependency_version not in self.version_dependencies:
-                    self.version_dependencies.append(dependency_version)
+        for data in event['data']['settings']['data']:
+            for output in data.get('result') or []:
+                if output.get('name') == 'output':
+                    for plugin_output in output.get('result') or []:
+                        if plugin_output.get('name') == 'package_output':
+                            dependency_version_ids = plugin_output.get('user_data',{}).get('data',{}).\
+                            get('version_dependency_ids')
+                            if 0<len(dependency_version_ids):
+                                self.logger.info('Got version dependencies: {}'.format(dependency_version_ids))
+                                for dependency_version_id in dependency_version_ids:
+                                    dependency_version = self.session.query(
+                                        'select version from AssetVersion where id is "{}"'.format(
+                                            dependency_version_id
+                                        )
+                                    ).one()
+                                    if dependency_version not in self.version_dependencies:
+                                        self.version_dependencies.append(dependency_version)
 
         super_result = super(PublisherFinalizerUnrealPlugin, self)._run(event)
 

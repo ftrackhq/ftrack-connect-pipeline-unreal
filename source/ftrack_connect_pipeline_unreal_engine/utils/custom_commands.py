@@ -44,4 +44,15 @@ def import_level(level_asset):
 def merge_level(level_asset):
     pass
 
+def get_all_sequences(as_names=True):
+    ''' Returns a list of of all sequences names '''
+    result = []
+    actors = ue.EditorLevelLibrary.get_all_level_actors()
+    for actor in actors:
+        if actor.static_class() == ue.LevelSequenceActor.static_class():
+            seq = actor.load_sequence()
+            result.append(seq.get_name() if as_names else seq)
+            break
+    return result
+
 

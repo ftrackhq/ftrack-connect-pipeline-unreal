@@ -142,31 +142,25 @@ class FTrackContext(object):
     def external_init(self):
         pass
 
-    def get_all_sequences(self):
-        result = []
-        actors = ue.EditorLevelLibrary.get_all_level_actors()
-        for actor in actors:
-            if actor.static_class() == ue.LevelSequenceActor.static_class():
-                result.append(actor.load_sequence())
-                break
-        return result
-
     def setTimeLine(self):
         '''Set time line to FS , FE environment values'''
+
+        from ftrack_connect_pipeline_unreal_engine.utils import custom_commands as unreal_utils
 
         # This is for the current frame range
         start = os.getenv('FS')
         end = os.getenv('FE')
         fps = os.getenv('FPS')
 
-        sequences = self.get_all_sequences()
+        sequences = unreal_utils.get_all_sequences(as_names=False)
         if 0<len(sequences):
-            masterSequence = sequences[0]
-            if masterSequence:
-                masterSequence.set_playback_start(int(float(start)))
-                masterSequence.set_playback_end(int(float(end)))
-                masterSequence.set_display_rate(ue.FrameRate(int(float(fps))))
-                ue.EditorAssetLibrary.save_loaded_asset(masterSequence)
+            master_sequence = sequences[0]
+            if master_sequence:
+                master_sequence.set_playback_start(int(float(start)))
+                master_sequence.set_playback_end(int(float(end)))
+                master_sequence.set_display_rate(ue.FrameRate(int(float(fps))))
+                ue.EditorAssetLibrary.save_loaded_asset(master_sequence)
+                logger.info('Set master sequence timeline to: {}-{}, {} fps'.format(start, end, fps))
             else:
                 logger.info(
                     'No LevelSequence were found in the current map'
