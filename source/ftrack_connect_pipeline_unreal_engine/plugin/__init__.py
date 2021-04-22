@@ -18,7 +18,7 @@ class BaseUnrealPlugin(plugin.BasePlugin):
 from ftrack_connect_pipeline_qt import plugin as pluginWidget
 
 class BaseUnrealPluginWidget(BaseUnrealPlugin, pluginWidget.BasePluginWidget):
-    type = 'widget'
+    category = 'plugin.widget'
     ui_type = unreal_constants.UI_TYPE
 
     #def _run(self, event):

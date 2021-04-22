@@ -117,11 +117,14 @@ class FtrackAssetTab(FtrackAssetBase):
                 )
             ue.EditorAssetLibrary.save_loaded_asset(ass)
 
-    def connect_objects(self, assets):
+    def connect_objects(self, asset_paths):
         '''
         Add asset info to Unreal assets
         '''
-        for ass in assets:
+        assetRegistry = ue.AssetRegistryHelpers.get_asset_registry()
+
+        for ass_path in asset_paths:
+            ass = assetRegistry.get_asset_by_object_path(ass_path)
             self._set_ftab(ass)
 
     def _update_ftrack_object(self, ass):
