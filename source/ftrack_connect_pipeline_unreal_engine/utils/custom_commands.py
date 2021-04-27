@@ -1,5 +1,5 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2019 ftrack
+# :copyright: Copyright (c) 2014-2021 ftrack
 
 import sys
 import re
@@ -45,7 +45,9 @@ def merge_level(level_asset):
     pass
 
 def get_all_sequences(as_names=True):
-    ''' Returns a list of of all sequences names '''
+    '''
+        Returns a list of of all sequences names
+    '''
     result = []
     actors = ue.EditorLevelLibrary.get_all_level_actors()
     for actor in actors:

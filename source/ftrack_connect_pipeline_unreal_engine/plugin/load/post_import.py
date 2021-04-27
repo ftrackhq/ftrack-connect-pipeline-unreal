@@ -1,5 +1,5 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2020 ftrack
+# :copyright: Copyright (c) 2014-2021 ftrack
 
 from ftrack_connect_pipeline import plugin
 from ftrack_connect_pipeline_qt import plugin as pluginWidget
@@ -8,7 +8,8 @@ from ftrack_connect_pipeline_unreal_engine.plugin import (
 )
 
 
-class LoaderPostImportUnrealPlugin(plugin.LoaderPostImportPlugin, BaseUnrealPlugin):
+class LoaderPostImportUnrealPlugin(plugin.LoaderPostImportPlugin,
+                                   BaseUnrealPlugin):
     ''' Class representing a Collector Plugin
 
     .. note::

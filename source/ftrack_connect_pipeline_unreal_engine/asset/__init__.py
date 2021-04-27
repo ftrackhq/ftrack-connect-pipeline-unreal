@@ -1,5 +1,5 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2014-2020 ftrack
+# :copyright: Copyright (c) 2014-2021 ftrack
 
 import os
 import json
@@ -41,7 +41,7 @@ class FtrackAssetTab(FtrackAssetBase):
         param_dict = {}
         for key in list(asset_const.KEYS):
             value = ue.EditorAssetLibrary.get_metadata_tag(
-                ass, "{}{}".format(PREFIX, key)
+                ass, '{}{}'.format(PREFIX, key)
             )
             if value:
                 param_dict[key] = value
@@ -69,8 +69,8 @@ class FtrackAssetTab(FtrackAssetBase):
 
     def get_ftrack_object_from_scene(self):
         '''
-        Return the ftrack object names from the current asset_version if it exists in
-        the scene.
+        Return the ftrack object names from the current asset_version if it
+         exists in the scene.
         '''
         result_asset = None
         ftrack_asset_assets = unreal_utils.get_ftrack_assets()
@@ -101,7 +101,7 @@ class FtrackAssetTab(FtrackAssetBase):
         node_asset_info = FtrackAssetInfo(param_dict)
 
         if node_asset_info == self.asset_info:
-            self.logger.debug("{} is synced".format(ass))
+            self.logger.debug('{} is synced'.format(ass))
             synced = True
 
         return synced
@@ -114,7 +114,7 @@ class FtrackAssetTab(FtrackAssetBase):
         if ass:
             for k, v in self.asset_info.items():
                 ue.EditorAssetLibrary.set_metadata_tag(
-                    ass, "{}{}".format(PREFIX, k), str(v)
+                    ass, '{}{}'.format(PREFIX, k), str(v)
                 )
             ue.EditorAssetLibrary.save_loaded_asset(ass)
 
@@ -125,7 +125,8 @@ class FtrackAssetTab(FtrackAssetBase):
         assetRegistry = ue.AssetRegistryHelpers.get_asset_registry()
 
         for ass_path in asset_paths:
-            asset_data = assetRegistry.get_assets_by_package_name(os.path.splitext(ass_path)[0])
+            asset_data = assetRegistry.get_assets_by_package_name(
+                os.path.splitext(ass_path)[0])
             if 0<len(asset_data):
                 self._set_ftab(asset_data[0].get_asset())
 
@@ -137,7 +138,7 @@ class FtrackAssetTab(FtrackAssetBase):
 
         for k, v in list(self.asset_info.items()):
             ue.EditorAssetLibrary.set_metadata_tag(
-                ass, "{}{}".format(PREFIX, k), str(v)
+                ass, '{}{}'.format(PREFIX, k), str(v)
             )
             ue.EditorAssetLibrary.save_loaded_asset(ass)
 

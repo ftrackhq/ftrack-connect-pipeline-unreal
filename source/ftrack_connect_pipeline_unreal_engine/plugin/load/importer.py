@@ -1,5 +1,5 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2020 ftrack
+# :copyright: Copyright (c) 2014-2021 ftrack
 
 import json
 import base64
@@ -50,14 +50,16 @@ class LoaderImporterUnrealPlugin(plugin.LoaderImporterPlugin, BaseUnrealPlugin):
             run = result.get('run')
             if isinstance(run, dict):
                 # Import was successful, store ftrack metadata
-                ftrack_asset_class = self.get_asset_class(context, data, options)
+                ftrack_asset_class = self.get_asset_class(
+                    context, data, options)
 
                 for (path_component, asset_paths) in run.items():
                     ftrack_asset_class.connect_objects(asset_paths)
 
         return super_result
 
-class LoaderImporterUnrealWidget(pluginWidget.LoaderImporterWidget, BaseUnrealPluginWidget):
+class LoaderImporterUnrealWidget(pluginWidget.LoaderImporterWidget,
+                                 BaseUnrealPluginWidget):
     ''' Class representing a Collector Widget
 
     .. note::

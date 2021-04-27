@@ -1,5 +1,5 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2014-2020 ftrack
+# :copyright: Copyright (c) 2014-2021 ftrack
 
 import time
 
@@ -52,7 +52,8 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
                 param_dict = FtrackAssetTab.get_parameters_dictionary(
                     ass
                 )
-                # avoid objects containing the old ftrack tab without information
+                # avoid objects containing the old ftrack tab without
+                # information.
                 if not param_dict:
                     continue
                 node_asset_info = FtrackAssetInfo(param_dict)

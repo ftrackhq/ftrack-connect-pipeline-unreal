@@ -1,5 +1,5 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2021 ftrack
+# :copyright: Copyright (c) 2014-2021 ftrack
 
 import os
 import sys
@@ -21,27 +21,27 @@ def get_dialog(name):
     from ftrack_connect_pipeline_unreal_engine.client import asset_manager
     from ftrack_connect_pipeline_unreal_engine.client import log_viewer
 
-    if "Publish" in name:
+    if 'Publish' in name:
         return publish.UnrealPublisherClient
-    elif "Loader" in name:
+    elif 'Loader' in name:
         return load.UnrealLoaderClient
-    elif "Asset" in name:
+    elif 'Asset' in name:
         return asset_manager.UnrealAssetManagerClient
-    elif "LogViewer" in name:
+    elif 'LogViewer' in name:
         return log_viewer.UnrealLogViewerClient
 
 
 class Command(object):
-    """
+    '''
         Command object allowing binding between UI and actions
-    """
+    '''
 
     def __init__(
         self,
         name,
         display_name,
         description,
-        command_type="dialog",
+        command_type='dialog',
         user_data=None,
     ):
         self.name = name
@@ -52,9 +52,9 @@ class Command(object):
 
 
 class FTrackContext(object):
-    """
+    '''
         Generic context ftrack object allowing caching of python specific data.
-    """
+    '''
 
     def __init__(self):
         self.connector = None
@@ -71,81 +71,67 @@ class FTrackContext(object):
         # main menu commands
         self.commands.append(
             Command(
-                "ftrackLoader",
-                "Loader",
-                "ftrack load asset",
-                "dialog"
+                'ftrackLoader',
+                'Loader',
+                'ftrack load asset',
+                'dialog'
             )
         )
-        self.commands.append(Command("", "", "", "separator"))
+        self.commands.append(Command('', '', '', 'separator'))
         self.commands.append(
             Command(
-                "ftrackPublish",
-                "Publish",
-                "ftrack publish",
-                "dialog"
+                'ftrackPublish',
+                'Publish',
+                'ftrack publish',
+                'dialog'
             )
         )
-        self.commands.append(Command("", "", "", "separator"))
+        self.commands.append(Command('', '', '', 'separator'))
         self.commands.append(
             Command(
-                "ftrackAssetManager",
-                "Asset manager",
-                "ftrack browser",
-                "dialog",
+                'ftrackAssetManager',
+                'Asset manager',
+                'ftrack browser',
+                'dialog',
             )
         )
-        self.commands.append(Command("", "", "", "separator"))
+        self.commands.append(Command('', '', '', 'separator'))
         self.commands.append(
             Command(
-                "ftrackLogViewer",
-                "Log Viewer",
-                "ftrack log viewer",
-                "dialog"
+                'ftrackLogViewer',
+                'Log Viewer',
+                'ftrack log viewer',
+                'dialog'
             )
         )
         # TODO: Bring back info and task widgets
-        # self.commands.append(
-        #     Command(
-        #         "ftrackInfo",
-        #         "Info",
-        #         "ftrack info",
-        #         "dialog",
-        #         FtrackUnrealInfoDialog,
-        #     )
-        # )
-        # self.commands.append(
-        #     Command(
-        #         "ftrackTasks",
-        #         "Tasks",
-        #         "ftrack tasks",
-        #         "dialog",
-        #         FtrackTasksDialog,
-        #     )
-        # )
 
     def _init_tags(self):
 
-        from ftrack_connect_pipeline_unreal_engine.constants import asset as asset_const
+        from ftrack_connect_pipeline_unreal_engine.constants import asset as \
+            asset_const
 
         self.tags = []
-        PREFIX = "ftrack."
+        PREFIX = 'ftrack.'
         for comp in asset_const.KEYS:
             self.tags.append(PREFIX + comp)
 
     def _init_capture_arguments(self):
         self.capture_args = []
-        self.capture_args.append("-ResX=1280")
-        self.capture_args.append("-ResY=720")
-        self.capture_args.append("-MovieQuality=75")
+        self.capture_args.append('-ResX=1280')
+        self.capture_args.append('-ResY=720')
+        self.capture_args.append('-MovieQuality=75')
 
     def external_init(self):
         pass
 
     def setTimeLine(self):
-        '''Set time line to FS , FE environment values'''
+        '''
+            Set time line to FS , FE environment values
+        '''
 
-        from ftrack_connect_pipeline_unreal_engine.utils import custom_commands as unreal_utils
+        from ftrack_connect_pipeline_unreal_engine.utils import custom_commands\
+            as unreal_utils
 
         # This is for the current frame range
         start = os.getenv('FS')
@@ -160,7 +146,8 @@ class FTrackContext(object):
                 master_sequence.set_playback_end(int(float(end)))
                 master_sequence.set_display_rate(ue.FrameRate(int(float(fps))))
                 ue.EditorAssetLibrary.save_loaded_asset(master_sequence)
-                logger.info('Set master sequence timeline to: {}-{}, {} fps'.format(start, end, fps))
+                logger.info('Set master sequence timeline to: {}-{}, {} fps'
+                            .format(start, end, fps))
             else:
                 logger.info(
                     'No LevelSequence were found in the current map'
@@ -171,14 +158,15 @@ ftrackContext = FTrackContext()
 
 @ue.uclass()
 class FTrackPipelineWrapper(ue.FTrackConnect):
-    """
-        Main class for binding and interacting between python and ftrack C++ plugin.
-    """
+    '''
+        Main class for binding and interacting between python and ftrack
+        C++ plugin.
+    '''
 
     def _post_init(self):
-        """
-        Equivalent to __init__ but will also be called from C++
-        """
+        '''
+            Equivalent to __init__ but will also be called from C++
+        '''
         from Qt import QtWidgets, QtCore, QtGui
 
         ftrackContext.app = QtWidgets.QApplication.instance()
@@ -192,7 +180,8 @@ class FTrackPipelineWrapper(ue.FTrackConnect):
 
         session = ftrack_api.Session(auto_connect_event_hub=False)
 
-        self.currentEntity = session.query('Task where id={}'.format(os.getenv('FTRACK_CONTEXTID') or os.getenv('FTRACK_TASKID')))
+        self.currentEntity = session.query('Task where id={}'.format(
+            os.getenv('FTRACK_CONTEXTID') or os.getenv('FTRACK_TASKID')))
 
         from ftrack_connect_pipeline_unreal_engine import host as unreal_host
         from ftrack_connect_pipeline_qt import event
@@ -252,13 +241,15 @@ class FTrackPipelineWrapper(ue.FTrackConnect):
     def execute_command(self, command_name):
         for command in ftrackContext.commands:
             if command.name == command_name:
-                if command.command_type == "dialog":
+                if command.command_type == 'dialog':
                     logging.info('Executing command' + command.name)
                     self._open_dialog(command.name, command.display_name)
                     break
 
     def _open_dialog(self, dialog_ident, title):
-        '''Open *dialog_class* and create if not already existing.'''
+        '''
+            Open *dialog_class* and create if not already existing.
+        '''
         dialog_class = get_dialog(dialog_ident)
         dialog_name = dialog_ident
 
