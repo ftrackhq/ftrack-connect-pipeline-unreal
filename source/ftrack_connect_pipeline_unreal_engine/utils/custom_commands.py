@@ -1,11 +1,7 @@
 # :coding: utf-8
 # :copyright: Copyright (c) 2014-2021 ftrack
 
-import sys
-import re
 import os
-import glob
-import traceback
 
 import logging
 
@@ -34,6 +30,16 @@ def get_ftrack_assets():
             result.append(asset)
 
     return set(result)
+
+def get_asset_by_path(asset_path):
+    if not asset_path:
+        return None
+    assetRegistry = ue.AssetRegistryHelpers.get_asset_registry()
+    asset_data = assetRegistry.get_assets_by_package_name(
+        os.path.splitext(asset_path)[0])
+    if 0 < len(asset_data):
+       return asset_data[0].get_asset()
+    return None
 
 def open_level(level_asset):
     pass

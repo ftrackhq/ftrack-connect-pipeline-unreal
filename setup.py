@@ -31,7 +31,7 @@ BUILD_PATH = os.path.join(ROOT_PATH, 'build')
 
 STAGING_PATH = os.path.join(BUILD_PATH, PLUGIN_NAME)
 
-HOOK_PATH = os.path.join(RESOURCE_PATH, 'hook')
+HOOK_PATH = os.path.join(ROOT_PATH, 'hook')
 
 UNREAL_ICON_PATH = os.path.join(RESOURCE_PATH, 'icon')
 UNREAL_PLUGINS_PATH = os.path.join(RESOURCE_PATH, 'plugins')
@@ -134,12 +134,11 @@ setup(
     package_data={'': ['*.ico']},
     python_requires='<3.8',
     setup_requires=[
-        'sphinx >= 1.2.2, < 2',
+        'sphinx >= 1.8.5, < 4',
         'sphinx_rtd_theme >= 0.1.6, < 2',
         'lowdown >= 0.1.0, < 1',
     ],
     install_requires=[
-        'ftrack-python-api',
         'appdirs == 1.4.0',
         'PySide2 >=5, <6',
         'Qt.py >=1.0.0, < 2'

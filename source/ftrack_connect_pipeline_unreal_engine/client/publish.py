@@ -17,14 +17,6 @@ class UnrealPublisherClient(QtPublisherClient):
         )
         self.setWindowTitle('Unreal Pipeline Publisher')
 
-    def change_host(self, host_connection):
-        ''' Triggered when host_changed is called from the host_selector.'''
-        super(UnrealPublisherClient, self).change_host(host_connection)
-
-
-    def change_definition(self, schema, definition):
-        super(UnrealPublisherClient, self).change_definition(schema, definition)
-
     def post_build(self):
         ''' Change window size '''
         super(UnrealPublisherClient, self).post_build()

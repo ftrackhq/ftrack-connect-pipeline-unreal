@@ -48,9 +48,9 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
             ftrack_asset_assets = unreal_utils.get_ftrack_assets()
             ftrack_asset_info_list = []
 
-            for ass in ftrack_asset_assets:
+            for asset in ftrack_asset_assets:
                 param_dict = FtrackAssetTab.get_parameters_dictionary(
-                    ass
+                    asset
                 )
                 # avoid objects containing the old ftrack tab without
                 # information.
@@ -77,7 +77,6 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
         except:
             import traceback
             self.logger.warning(traceback.format_exc())
-            raise
 
         return status, result
 
@@ -109,14 +108,16 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
             }
 
             try:
-                ass = FtrackAssetTab.get_ftrack_object_from_scene_on_asset_info(asset_info)
-                if not ass:
+                ftrack_asset_object = self.get_ftrack_asset_object(asset_info)
+                if not ftrack_asset_object:
                     message = "There is no ftrack object in the current scene with asset info '{}'".format(asset_info)
                     self.logger.warning(message)
                     status = constants.UNKNOWN_STATUS
                 else:
                     try:
-                        ue.EditorAssetLibrary.delete_asset(ass.get_path_name())
+                        asset_path = ftrack_asset_object.ftrack_object
+                        asset = unreal_utils.get_asset_by_path(asset_path)
+                        ue.EditorAssetLibrary.delete_asset(asset.get_path_name())
                         status = constants.SUCCESS_STATUS
                     except Exception as error:
                         message = str(
@@ -140,7 +141,6 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
         except:
             import traceback
             self.logger.warning(traceback.format_exc())
-            raise
         return status, result
 
     def select_asset(self, asset_info, options=None, plugin=None):
@@ -173,15 +173,17 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
             }
 
             try:
-                ass = FtrackAssetTab.get_ftrack_object_from_scene_on_asset_info(asset_info)
-                if not ass:
+                ftrack_asset_object = self.get_ftrack_asset_object(asset_info)
+                if not ftrack_asset_object:
                     message = "There is no ftrack object in the current scene with asset info '{}'".format(asset_info)
                     self.logger.warning(message)
                     status = constants.UNKNOWN_STATUS
                 else:
                     try:
+                        asset_path = ftrack_asset_object.ftrack_object
+                        asset = unreal_utils.get_asset_by_path(asset_path)
                         selection_path_names = []
-                        selection_path_names.append(str(ass.get_path_name()))
+                        selection_path_names.append(str(asset.get_path_name()))
                         ue.EditorAssetLibrary.sync_browser_to_objects(selection_path_names)
                         status = constants.SUCCESS_STATUS
                     except Exception as error:
@@ -207,7 +209,6 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
         except:
             import traceback
             self.logger.warning(traceback.format_exc())
-            raise
 
         return status, result
 
