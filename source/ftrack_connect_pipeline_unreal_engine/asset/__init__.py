@@ -33,7 +33,7 @@ class FtrackAssetTab(FtrackAssetBase):
         Return the ftrack ftrack_object for this class. It checks if there is
         already a matching ftrack asset in the scene and stores its path.
         '''
-        asset_path = self.get_ftrack_object_from_scene_on_asset_info(self.asset_info)
+        asset_path = self.get_ftrack_object_from_scene()
         if not asset_path:
             self.logger.warning('My ftrack object has disappeared! (asset info:'
                                 ' {})'.format(self.asset_info))
@@ -64,7 +64,7 @@ class FtrackAssetTab(FtrackAssetBase):
                 param_dict[key] = value
         return param_dict
 
-    def get_ftrack_object_from_scene_on_asset_info(self, asset_info):
+    def get_ftrack_object_from_scene(self):
         ''' Find asset matching *asset_info* '''
         ftrack_asset_assets = unreal_utils.get_ftrack_assets()
         result_path = None
@@ -80,19 +80,12 @@ class FtrackAssetTab(FtrackAssetBase):
                     "Can not read v1 ftrack asset plugin")
             if (
                     node_asset_info[asset_const.REFERENCE_OBJECT] ==
-                    asset_info[asset_const.REFERENCE_OBJECT]
+                    self.asset_info[asset_const.REFERENCE_OBJECT]
             ):
                 result_path = asset.get_path_name()
                 break
         self.logger.debug('Found {} existing node'.format(result_path))
         return result_path
-
-    def get_ftrack_object_from_scene(self):
-        '''
-        Return the ftrack object names from the current asset_version if it
-         exists in the scene.
-        '''
-        return self.get_ftrack_object_from_scene_on_asset_info(self.asset_info)
 
     def _check_ftrack_object_sync(self, asset_path):
         '''
