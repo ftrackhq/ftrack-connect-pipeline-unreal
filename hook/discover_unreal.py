@@ -49,16 +49,31 @@ def on_application_launch(session, event):
         import traceback
         print(traceback.format_exc())
 
+    ftrack_installation_path = os.path.dirname(sys.executable)
+
+    logger.debug(
+        'sys executable:\n{0}'.format(
+            ftrack_installation_path
+        )
+    )
+
+    python_dependencies_connect = os.path.join(ftrack_installation_path, 'Lib')
+    python_dependencies_connect_library = os.path.join(ftrack_installation_path, 'Lib', 'library.zip')
+    qt_plugin_path = os.path.join(ftrack_installation_path, 'Lib', 'Qt', 'plugins')
+
     data = {
         'integration': {
             'name': 'ftrack-connect-pipeline-unreal-engine',
             'version': VERSION,
             'env': {
                 'FTRACK_EVENT_PLUGIN_PATH.prepend': plugin_hook,
-                'PYTHONPATH.prepend': python_dependencies,
+                'PYTHONPATH.prepend': os.pathsep.join([python_dependencies, python_dependencies_connect, python_dependencies_connect_library]),
+                'PATH.prepend': os.pathsep.join([python_dependencies_connect]),
                 'QT_PREFERRED_BINDING.set': 'PySide2' if is_py3k else 'PySide',
                 'FTRACK_CONTEXTID.set': entity['entityId'],
                 'FTRACK_CONTEXTTYPE.set': entity['entityType'],
+                'QT_PLUGIN_PATH.set': qt_plugin_path,
+                'QT_VERBOSE.set': "true"
             }
         }
     }
