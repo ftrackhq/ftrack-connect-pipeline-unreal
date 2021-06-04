@@ -95,7 +95,7 @@ class FtrackAssetTab(FtrackAssetBase):
         asset = unreal_utils.get_asset_by_path(asset_path)
 
         if not asset:
-            self.logger.warning("ftrack asset doesn't exists")
+            self.logger.error("ftrack asset doesn't exists")
             return False
 
         param_dict = self.get_parameters_dictionary(asset)
