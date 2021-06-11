@@ -31,8 +31,8 @@ class LoaderImporterUnrealPlugin(plugin.LoaderImporterPlugin, BaseUnrealPlugin):
 
         super_result = super(LoaderImporterUnrealPlugin, self)._run(event)
 
-        context = self.plugin_settings.get('context')
-        self.logger.debug('Current context : {}'.format(context))
+        context_data = self.plugin_settings.get('context_data')
+        self.logger.debug('Current context : {}'.format(context_data))
 
         data = self.plugin_settings.get('data')
         self.logger.debug('Current data : {}'.format(data))
@@ -51,7 +51,7 @@ class LoaderImporterUnrealPlugin(plugin.LoaderImporterPlugin, BaseUnrealPlugin):
             if isinstance(run, dict):
                 # Import was successful, store ftrack metadata
                 ftrack_asset_class = self.get_asset_class(
-                    context, data, options)
+                    context_data, data, options)
 
                 for (path_component, asset_paths) in run.items():
                     ftrack_asset_class.connect_objects(asset_paths)
