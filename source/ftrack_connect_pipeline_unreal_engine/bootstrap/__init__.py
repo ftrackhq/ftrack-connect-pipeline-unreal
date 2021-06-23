@@ -9,9 +9,11 @@ import logging
 
 import unreal as ue
 
+from ftrack_connect_pipeline_qt import event
+from ftrack_connect_pipeline import constants
+from ftrack_connect_pipeline_unreal_engine import host as unreal_host
+
 import ftrack_api
-
-
 
 from ftrack_connect_pipeline.configure_logging import configure_logging
 
@@ -191,10 +193,6 @@ class FTrackPipelineWrapper(ue.FTrackConnect):
 
         self.currentEntity = session.query('Task where id={}'.format(
             os.getenv('FTRACK_CONTEXTID') or os.getenv('FTRACK_TASKID')))
-
-        from ftrack_connect_pipeline_unreal_engine import host as unreal_host
-        from ftrack_connect_pipeline_qt import event
-        from ftrack_connect_pipeline import constants
 
         ftrackContext.event_manager = event.QEventManager(
             session=session, mode=constants.LOCAL_EVENT_MODE # REMOTE_EVENT_MODE
