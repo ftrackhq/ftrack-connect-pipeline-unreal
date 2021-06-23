@@ -9,31 +9,47 @@ import sys
 
 
 NAME = 'ftrack-connect-pipeline-unreal-engine'
-VERSION = '0.1.0'
 
 logger = logging.getLogger('{}.hook'.format(NAME.replace('-','_')))
 
-def on_application_launch(session, event):
-    ''' Handle application launch and add environment to *event*. '''
-    logger.info('launching: {}'.format(NAME))
 
-    plugin_base_dir = os.path.normpath(
-        os.path.join(
-            os.path.abspath(
-                os.path.dirname(__file__)
-            ),
-            '..'
-        )
+plugin_base_dir = os.path.normpath(
+    os.path.join(
+        os.path.abspath(
+            os.path.dirname(__file__)
+        ),
+        '..'
     )
+)
 
-    python_dependencies = os.path.abspath(os.path.join(plugin_base_dir,
-                                                       'dependencies'))
+python_dependencies = os.path.abspath(
+    os.path.join(
+        plugin_base_dir,
+        'dependencies'
+    )
+)
 
 
-    sys.path.append(python_dependencies)
+sys.path.append(python_dependencies)
 
-    entity = event['data']['context']['selection'][0]
-    e = session.get('Context', entity['entityId'])
+
+def on_discover_pipeline_unreal(session, event):
+
+    from ftrack_connect_pipeline_unreal_engine import __version__ as integration_version
+
+    data = {
+        'integration': {
+            'name': 'ftrack-connect-pipeline-unreal-engine',
+            'version': integration_version
+        }
+    }
+
+    return data
+
+
+def on_launch_pipeline_unreal(session, event):
+    ''' Handle application launch and add environment to *event*. '''
+    pipeline_unreal_base_data = on_discover_pipeline_unreal(session, event)
 
     definitions_plugin_hook = os.getenv('FTRACK_DEFINITION_PLUGIN_PATH')
     plugin_hook = os.path.join(definitions_plugin_hook, 'unreal')
@@ -49,28 +65,26 @@ def on_application_launch(session, event):
         import traceback
         print(traceback.format_exc())
 
-    data = {
-        'integration': {
-            'name': 'ftrack-connect-pipeline-unreal-engine',
-            'version': VERSION,
-            'env': {
-                'FTRACK_EVENT_PLUGIN_PATH.prepend': plugin_hook,
-                'PYTHONPATH.prepend': python_dependencies,
-                'QT_PREFERRED_BINDING.set': 'PySide2' if is_py3k else 'PySide',
-                'FTRACK_CONTEXTID.set': entity['entityId'],
-                'FTRACK_CONTEXTTYPE.set': entity['entityType'],
-            }
-        }
+
+    pipeline_maya_base_data['integration']['env'] = {
+        'FTRACK_EVENT_PLUGIN_PATH.prepend': plugin_hook,
+        'PYTHONPATH.prepend': python_dependencies,
+        'QT_PREFERRED_BINDING.set': 'PySide2' if is_py3k else 'PySide',
+        'FTRACK_CONTEXTID.set': entity['entityId'],
+        'FTRACK_CONTEXTTYPE.set': entity['entityType']
     }
-    if e.__class__.__name__ == 'Task':
+
+    selection = event['data'].get('context', {}).get('selection', [])
+
+    if selection and e.__class__.__name__ == 'Task':
         task = e
-        data['integration']['env']['FS.set'] = str(
+        pipeline_maya_base_data['integration']['env']['FS.set'] = str(
             task['parent']['custom_attributes'].get('fstart', '1.0'))
-        data['integration']['env']['FE.set'] = str(
+        pipeline_maya_base_data['integration']['env']['FE.set'] = str(
             task['parent']['custom_attributes'].get('fend', '100.0'))
-        data['integration']['env']['FPS.set'] = str(
+        pipeline_maya_base_data['integration']['env']['FPS.set'] = str(
             task['parent']['custom_attributes'].get('fps', '24'))
-    return data
+    return pipeline_maya_base_data
 
 
 def register(session):
@@ -78,20 +92,26 @@ def register(session):
     if not isinstance(session, ftrack_api.session.Session):
         return
 
-    handle_event = functools.partial(
-        on_application_launch,
+    handle_discovery_event = functools.partial(
+        on_discover_pipeline_unreal,
         session
     )
-    logger.info('registering :{}'.format(NAME))
+
     session.event_hub.subscribe(
         'topic=ftrack.connect.application.discover'
         ' and data.application.identifier=unreal*'
         ' and data.application.version>=4.26',
-        handle_event, priority=40
+        handle_discovery_event, priority=40
     )
+
+    handle_launch_event = functools.partial(
+        on_launch_pipeline_unreal,
+        session
+    )    
+
     session.event_hub.subscribe(
         'topic=ftrack.connect.application.launch'
         ' and data.application.identifier=unreal*'
         ' and data.application.version>=4.26',
-        handle_event, priority=40
+        handle_launch_event, priority=40
     )
