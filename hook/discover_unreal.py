@@ -52,7 +52,7 @@ def on_launch_pipeline_unreal(session, event):
     pipeline_unreal_base_data = on_discover_pipeline_unreal(session, event)
 
     definitions_plugin_hook = os.getenv('FTRACK_DEFINITION_PLUGIN_PATH')
-    plugin_hook = os.path.join(definitions_plugin_hook, 'unreal')
+    plugin_hook = os.path.join(definitions_plugin_hook, 'unreal', 'python')
 
     # Determine if py3k or not by looking at version number
     is_py3k = True
