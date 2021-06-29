@@ -6,13 +6,10 @@ import sys
 import traceback
 import logging
 
-
 import unreal as ue
 
-import ftrack_api
+from Qt import QtWidgets, QtCore, QtGui
 
-logger = logging.getLogger('ftrack_connect_pipeline_unreal_pipeline.bootstrap')
-logger.setLevel(logging.DEBUG)
 
 def get_dialog(name):
 
@@ -156,6 +153,30 @@ class FTrackContext(object):
 
 ftrackContext = FTrackContext()
 
+# Needs to be done before using ftrack_connect_pipeline_qt
+ftrackContext.app = QtWidgets.QApplication.instance()
+if ftrackContext.app is None:
+    ftrackContext.app = QtWidgets.QApplication([])
+    ftrackContext.app.setWindowIcon(
+        QtGui.QIcon(os.path.dirname(__file__) + '/UE4Ftrack.ico')
+    )
+
+from ftrack_connect_pipeline_qt import event
+from ftrack_connect_pipeline import constants
+from ftrack_connect_pipeline_unreal_engine import host as unreal_host
+
+import ftrack_api
+
+from ftrack_connect_pipeline.configure_logging import configure_logging
+
+configure_logging(
+    'ftrack_connect_pipeline_unreal_engine',
+    extra_modules=['ftrack_connect_pipeline', 'ftrack_connect_pipeline_qt'],
+    propagate=False
+)
+
+logger = logging.getLogger('ftrack_connect_pipeline_unreal_engine')
+
 @ue.uclass()
 class FTrackPipelineWrapper(ue.FTrackConnect):
     '''
@@ -167,14 +188,6 @@ class FTrackPipelineWrapper(ue.FTrackConnect):
         '''
             Equivalent to __init__ but will also be called from C++
         '''
-        from Qt import QtWidgets, QtCore, QtGui
-
-        ftrackContext.app = QtWidgets.QApplication.instance()
-        if ftrackContext.app is None:
-            ftrackContext.app = QtWidgets.QApplication([])
-            ftrackContext.app.setWindowIcon(
-                QtGui.QIcon(os.path.dirname(__file__) + '/UE4Ftrack.ico')
-            )
 
         logger.info('Initializing ftrack Connect framework.')
 
@@ -182,10 +195,6 @@ class FTrackPipelineWrapper(ue.FTrackConnect):
 
         self.currentEntity = session.query('Task where id={}'.format(
             os.getenv('FTRACK_CONTEXTID') or os.getenv('FTRACK_TASKID')))
-
-        from ftrack_connect_pipeline_unreal_engine import host as unreal_host
-        from ftrack_connect_pipeline_qt import event
-        from ftrack_connect_pipeline import constants
 
         ftrackContext.event_manager = event.QEventManager(
             session=session, mode=constants.LOCAL_EVENT_MODE # REMOTE_EVENT_MODE
