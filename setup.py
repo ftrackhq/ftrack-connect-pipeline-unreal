@@ -3,17 +3,14 @@
 
 import os
 import re
+import sys
+import subprocess
 import shutil
+import setuptools_scm
 
 from setuptools.command.test import test as TestCommand
 from setuptools import setup, find_packages, Command
-from pkg_resources import parse_version
-import pip
 
-if parse_version(pip.__version__) < parse_version('19.3.0'):
-    raise ValueError('Pip should be version 19.3.0 or higher')
-
-from pip._internal import main as pip_main
 
 # Define paths
 
@@ -36,14 +33,8 @@ HOOK_PATH = os.path.join(ROOT_PATH, 'hook')
 UNREAL_ICON_PATH = os.path.join(RESOURCE_PATH, 'icon')
 UNREAL_PLUGINS_PATH = os.path.join(RESOURCE_PATH, 'plugins')
 
-
-with open(
-    os.path.join(SOURCE_PATH, 'ftrack_connect_pipeline_unreal_engine', '_version.py')
-) as _version_file:
-    VERSION = re.match(
-        r'.*__version__ = \'(.*?)\'', _version_file.read(), re.DOTALL
-    ).group(1)
-
+release = setuptools_scm.get_version(version_scheme='post-release')
+VERSION = '.'.join(release.split('.')[:3])
 
 # Update staging path with the plugin version
 STAGING_PATH = STAGING_PATH.format(VERSION)
@@ -101,14 +92,13 @@ class BuildPlugin(Command):
         shutil.copyfile(README_PATH, os.path.join(STAGING_PATH, 'README.md'))
 
         # Install local dependencies
-        pip_main(
+        subprocess.check_call(
             [
-                'install',
-                '.',
-                '--target',
+                sys.executable, '-m', 'pip', 'install','.','--target',
                 os.path.join(STAGING_PATH, 'dependencies')
             ]
         )
+
 
         # Generate plugin zip
         shutil.make_archive(
@@ -118,10 +108,17 @@ class BuildPlugin(Command):
         )
 
 
+version_template = '''
+# :coding: utf-8
+# :copyright: Copyright (c) 2017-2020 ftrack
+
+__version__ = {version!r}
+'''
+
+
 # Configuration.
 setup(
-    name='ftrack connect pipeline unreal engine',
-    version=VERSION,
+    name='ftrack-connect-pipeline-unreal-engine',
     description='Unreal engine integration with ftrack.',
     long_description=open(README_PATH).read(),
     keywords='',
@@ -133,10 +130,17 @@ setup(
     package_dir={'': 'source'},
     package_data={'': ['*.ico']},
     python_requires='<3.8',
+    use_scm_version={
+        'write_to': 'source/ftrack_connect_pipeline_unreal_engine/_version.py',
+        'write_to_template': version_template,
+        'version_scheme': 'post-release'
+    },
     setup_requires=[
         'sphinx >= 1.8.5, < 4',
         'sphinx_rtd_theme >= 0.1.6, < 2',
         'lowdown >= 0.1.0, < 1',
+        'setuptools>=45.0.0',
+        'setuptools_scm'
     ],
     install_requires=[
         'appdirs == 1.4.0',
