@@ -6,7 +6,6 @@ import re
 import sys
 import subprocess
 import shutil
-import setuptools_scm
 
 from setuptools.command.test import test as TestCommand
 from setuptools import setup, find_packages, Command
@@ -32,12 +31,6 @@ HOOK_PATH = os.path.join(ROOT_PATH, 'hook')
 
 UNREAL_ICON_PATH = os.path.join(RESOURCE_PATH, 'icon')
 UNREAL_PLUGINS_PATH = os.path.join(RESOURCE_PATH, 'plugins')
-
-release = setuptools_scm.get_version(version_scheme='post-release')
-VERSION = '.'.join(release.split('.')[:3])
-
-# Update staging path with the plugin version
-STAGING_PATH = STAGING_PATH.format(VERSION)
 
 
 # Custom commands.
@@ -71,6 +64,13 @@ class BuildPlugin(Command):
         pass
 
     def run(self):
+        '''Run the build step.'''
+        import setuptools_scm
+        release = setuptools_scm.get_version(version_scheme='post-release')
+        VERSION = '.'.join(release.split('.')[:3])
+        global STAGING_PATH
+        STAGING_PATH = STAGING_PATH.format(VERSION)
+
         '''Run the build step.'''
         # Clean staging path
         shutil.rmtree(STAGING_PATH, ignore_errors=True)
