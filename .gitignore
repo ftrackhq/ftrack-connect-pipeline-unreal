@@ -22,6 +22,8 @@ dist/
 # Maven
 target/
 dist/
+.eggs/
+build/
 
 # JetBrains IDE
 .idea/
@@ -48,3 +50,5 @@ Thumbs.db
 *.mov
 *.wmv
 
+# SCM
+source/ftrack_connect_pipeline_unreal_engine/_version.py
