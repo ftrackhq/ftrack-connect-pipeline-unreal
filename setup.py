@@ -139,7 +139,7 @@ setup(
         'sphinx >= 1.8.5, < 4',
         'sphinx_rtd_theme >= 0.1.6, < 2',
         'lowdown >= 0.1.0, < 1',
-        'setuptools>=45.0.0',
+        'setuptools>=44.0.0',
         'setuptools_scm'
     ],
     install_requires=[
