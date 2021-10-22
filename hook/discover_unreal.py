@@ -30,10 +30,10 @@ python_dependencies = os.path.abspath(
 )
 
 
-sys.path.append(python_dependencies)
 
 
 def on_discover_pipeline_unreal(session, event):
+    sys.path.append(python_dependencies)
 
     from ftrack_connect_pipeline_unreal_engine import __version__ as integration_version
 
@@ -66,25 +66,31 @@ def on_launch_pipeline_unreal(session, event):
         print(traceback.format_exc())
 
 
-    pipeline_maya_base_data['integration']['env'] = {
+    pipeline_unreal_base_data['integration']['env'] = {
         'FTRACK_EVENT_PLUGIN_PATH.prepend': plugin_hook,
         'PYTHONPATH.prepend': python_dependencies,
-        'QT_PREFERRED_BINDING.set': 'PySide2' if is_py3k else 'PySide',
-        'FTRACK_CONTEXTID.set': entity['entityId'],
-        'FTRACK_CONTEXTTYPE.set': entity['entityType']
+        'QT_PREFERRED_BINDING.set': 'PySide2' if is_py3k else 'PySide'
     }
 
     selection = event['data'].get('context', {}).get('selection', [])
 
-    if selection and e.__class__.__name__ == 'Task':
-        task = e
-        pipeline_maya_base_data['integration']['env']['FS.set'] = str(
-            task['parent']['custom_attributes'].get('fstart', '1.0'))
-        pipeline_maya_base_data['integration']['env']['FE.set'] = str(
-            task['parent']['custom_attributes'].get('fend', '100.0'))
-        pipeline_maya_base_data['integration']['env']['FPS.set'] = str(
-            task['parent']['custom_attributes'].get('fps', '24'))
-    return pipeline_maya_base_data
+    if selection:
+        entity = session.get('Context', selection[0]['entityId'])
+        if entity.__class__.__name__ == 'Task':
+            pipeline_unreal_base_data['integration']['env']['FTRACK_CONTEXTID.set'] = str(
+                entity['id']
+            )
+            # pipeline_unreal_base_data['integration']['env']['FTRACK_CONTEXTTYPE.set'] = str(
+            #     entity['entityType']
+            # )
+            pipeline_unreal_base_data['integration']['env']['FS.set'] = str(
+                entity['parent']['custom_attributes'].get('fstart', '1.0'))
+            pipeline_unreal_base_data['integration']['env']['FE.set'] = str(
+                entity['parent']['custom_attributes'].get('fend', '100.0'))
+            pipeline_unreal_base_data['integration']['env']['FPS.set'] = str(
+                entity['parent']['custom_attributes'].get('fps', '24'))
+    
+    return pipeline_unreal_base_data
 
 
 def register(session):
