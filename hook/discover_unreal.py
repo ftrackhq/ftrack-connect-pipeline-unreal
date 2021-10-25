@@ -76,13 +76,10 @@ def on_launch_pipeline_unreal(session, event):
 
     if selection:
         entity = session.get('Context', selection[0]['entityId'])
-        if entity.__class__.__name__ == 'Task':
+        if entity.entity_type == 'Task':
             pipeline_unreal_base_data['integration']['env']['FTRACK_CONTEXTID.set'] = str(
                 entity['id']
             )
-            # pipeline_unreal_base_data['integration']['env']['FTRACK_CONTEXTTYPE.set'] = str(
-            #     entity['entityType']
-            # )
             pipeline_unreal_base_data['integration']['env']['FS.set'] = str(
                 entity['parent']['custom_attributes'].get('fstart', '1.0'))
             pipeline_unreal_base_data['integration']['env']['FE.set'] = str(
