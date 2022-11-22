@@ -74,8 +74,10 @@ class UnrealDccObject(DccObject):
         '''
         Return true if the given *name* as ftrack file exists in the project.
         '''
-        ftrack_file_path = os.path.join(asset_const.FTRACK_ROOT_PATH, "{}.json".format(name))
-        return unreal.file_exists(ftrack_file_path)
+        ftrack_file_path = os.path.join(
+            asset_const.FTRACK_ROOT_PATH, "{}.json".format(name)
+        )
+        return unreal.path.file_exists(ftrack_file_path)
 
     def from_asset_info_id(self, asset_info_id):
         '''
