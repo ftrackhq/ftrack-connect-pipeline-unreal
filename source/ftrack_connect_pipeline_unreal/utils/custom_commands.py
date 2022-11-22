@@ -2,6 +2,7 @@
 # :copyright: Copyright (c) 2014-2022 ftrack
 import threading
 from functools import wraps
+import os
 
 from ftrack_connect_pipeline.utils import (
     get_save_path,
@@ -49,8 +50,14 @@ def get_main_window():
 
 
 def get_ftrack_nodes():
-    # return cmds.ls(type=asset_const.FTRACK_PLUGIN_TYPE)
-    pass
+    ftrack_nodes = []
+    content = os.listdir(asset_const.FTRACK_ROOT_PATH)
+    for item_name in content:
+        if item_name not in "ftrackdata":
+            continue
+        if item_name.endswith(".json"):
+            ftrack_nodes.append(os.path.splitext(item_name)[0])
+    return ftrack_nodes
 
 
 def get_current_scene_objects():
