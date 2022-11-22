@@ -2,19 +2,29 @@
 # :copyright: Copyright (c) 2014-2022 ftrack
 
 import logging
+import os
+import json
 
 from ftrack_connect_pipeline.asset.dcc_object import DccObject
 from ftrack_connect_pipeline_unreal.constants import asset as asset_const
 from ftrack_connect_pipeline_unreal.utils import custom_commands as unreal_utils
 
-#import maya.cmds as cmds
-
+import unreal
 
 class UnrealDccObject(DccObject):
     '''UnrealDccObject class.'''
 
     ftrack_plugin_id = asset_const.FTRACK_PLUGIN_ID
     '''Plugin id used on some DCC applications '''
+
+
+    @property
+    def ftrack_file_path(self):
+        '''
+        Return the json file path of the current dcc object.
+        '''
+        # This property is added for convenience in this DCC only.
+        return os.path.join(asset_const.FTRACK_ROOT_PATH, "{}.json".format(self.name))
 
     def __init__(self, name=None, from_id=None, **kwargs):
         '''
@@ -32,32 +42,12 @@ class UnrealDccObject(DccObject):
         Sets the given *v* into the given *k* and automatically set the
         attributes of the current self :obj:`name` on the DCC
         '''
-        # cmds.setAttr('{}.{}'.format(self.name, k), l=False)
-        # if k == asset_const.VERSION_NUMBER:
-        #     cmds.setAttr('{}.{}'.format(self.name, k), v, l=True)
-        # elif k == asset_const.REFERENCE_OBJECT:
-        #     cmds.setAttr(
-        #         '{}.{}'.format(self.name, k),
-        #         str(self.name),
-        #         type="string",
-        #         l=True,
-        #     )
-        # elif k == asset_const.IS_LATEST_VERSION:
-        #     cmds.setAttr('{}.{}'.format(self.name, k), bool(v), l=True)
-        #
-        # elif k == asset_const.DEPENDENCY_IDS:
-        #     cmds.setAttr(
-        #         '{}.{}'.format(self.name, k),
-        #         *([len(v)] + v),
-        #         type="stringArray",
-        #         l=True
-        #     )
-        #
-        # else:
-        #     cmds.setAttr(
-        #         '{}.{}'.format(self.name, k), v, type="string", l=True
-        #     )
+
         super(UnrealDccObject, self).__setitem__(k, v)
+        # As we are using a json file to handle the asset info, just dump the
+        # self dictionary to the json file
+        with open(self.ftrack_file_path, "w") as outfile:
+            json.dump(self, outfile)
 
     def create(self, name):
         '''
@@ -68,21 +58,24 @@ class UnrealDccObject(DccObject):
             self.logger.error(error_message)
             raise RuntimeError(error_message)
 
-        #dcc_object_node = cmds.createNode(asset_const.FTRACK_PLUGIN_TYPE, name=name)
+        # Set the name before creating the object because the ftrack_file_path
+        # property needs the name
+        self.name = name
 
-        self.logger.debug('Creating new dcc object {}'.format(dcc_object_node))
-        self.name = dcc_object_node
+        # Create an empty json file in the unreal project ftrack root folder
+        with open(self.ftrack_file_path, "w") as outfile:
+            json.dump({}, outfile)
+
+        self.logger.debug('Creating new dcc object {}'.format(name))
+
         return self.name
 
     def _name_exists(self, name):
         '''
-        Return true if the given *name* exists in the scene.
+        Return true if the given *name* as ftrack file exists in the project.
         '''
-
-        #if cmds.objExists(name):
-        #    return True
-
-        return False
+        ftrack_file_path = os.path.join(asset_const.FTRACK_ROOT_PATH, "{}.json".format(name))
+        return unreal.file_exists(ftrack_file_path)
 
     def from_asset_info_id(self, asset_info_id):
         '''
