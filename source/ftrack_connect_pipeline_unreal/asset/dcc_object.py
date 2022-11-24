@@ -14,7 +14,7 @@ import unreal
 class UnrealDccObject(DccObject):
     '''UnrealDccObject class.'''
 
-    ftrack_plugin_id = asset_const.FTRACK_PLUGIN_ID
+    ftrack_plugin_id = None #asset_const.FTRACK_PLUGIN_ID
     '''Plugin id used on some DCC applications '''
 
 
@@ -86,12 +86,14 @@ class UnrealDccObject(DccObject):
         '''
         ftrack_asset_nodes = unreal_utils.get_ftrack_nodes()
         for dcc_object_name in ftrack_asset_nodes:
+            ftrack_file_path = os.path.join(
+                asset_const.FTRACK_ROOT_PATH, "{}.json".format(dcc_object_name)
+            )
+            param_dict = {}
+            with open(ftrack_file_path, 'r') as openfile:
+                param_dict = json.load(openfile)
 
-            # id_value = cmds.getAttr(
-            #     '{}.{}'.format(dcc_object_name, asset_const.ASSET_INFO_ID)
-            # )
-
-            if id_value == asset_info_id:
+            if param_dict.get(asset_const.ASSET_INFO_ID) == asset_info_id:
                 self.logger.debug(
                     'Found existing object: {}'.format(dcc_object_name)
                 )
@@ -118,16 +120,17 @@ class UnrealDccObject(DccObject):
             '{0}.{1}'.format(__name__, __class__.__name__)
         )
         param_dict = {}
-        #if not cmds.objExists(object_name):
-        #    error_message = "{} Object doesn't exists".format(object_name)
-        #    logger.error(error_message)
-        #    return param_dict
-        #all_attr = cmds.listAttr(object_name, c=True, se=True)
-        for attr in all_attr:
-            #if cmds.attributeQuery(attr, node=object_name, msg=True):
-            #    continue
-            #attr_value = cmds.getAttr('{}.{}'.format(object_name, attr))
-            param_dict[attr] = attr_value
+        ftrack_file_path = os.path.join(
+            asset_const.FTRACK_ROOT_PATH, "{}.json".format(object_name)
+        )
+        if not unreal.path.file_exists(ftrack_file_path):
+            error_message = "{} Object doesn't exists".format(object_name)
+            logger.error(error_message)
+            return param_dict
+
+        with open(ftrack_file_path, 'r') as openfile:
+            param_dict = json.load(openfile)
+
         return param_dict
 
     def connect_objects(self, objects):
@@ -138,6 +141,9 @@ class UnrealDccObject(DccObject):
         *objects* List of Unreal DAG objects
         '''
         for obj in objects:
+            pass
+            #TODO: create the ftrack attribute to the object and link the asset info id in there.
+            # Also we can edit the json file the assetlink property and add the object name in there (find if there is aan object id)
             # if cmds.lockNode(obj, q=True)[0]:
             #     cmds.lockNode(obj, l=False)
             #
