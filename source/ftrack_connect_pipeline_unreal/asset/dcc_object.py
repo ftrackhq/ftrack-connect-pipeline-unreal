@@ -77,7 +77,7 @@ class UnrealDccObject(DccObject):
         ftrack_file_path = os.path.join(
             asset_const.FTRACK_ROOT_PATH, "{}.json".format(name)
         )
-        return unreal.path.file_exists(ftrack_file_path)
+        return unreal.Path.file_exists(ftrack_file_path)
 
     def from_asset_info_id(self, asset_info_id):
         '''
@@ -123,7 +123,7 @@ class UnrealDccObject(DccObject):
         ftrack_file_path = os.path.join(
             asset_const.FTRACK_ROOT_PATH, "{}.json".format(object_name)
         )
-        if not unreal.path.file_exists(ftrack_file_path):
+        if not unreal.Path.file_exists(ftrack_file_path):
             error_message = "{} Object doesn't exists".format(object_name)
             logger.error(error_message)
             return param_dict

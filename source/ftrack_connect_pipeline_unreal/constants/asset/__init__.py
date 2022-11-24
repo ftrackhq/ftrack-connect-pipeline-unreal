@@ -7,6 +7,6 @@ import unreal
 FTRACK_PLUGIN_TYPE = 'ftrackAssetNode' # or 'ftracktab'
 LOCKED = 'locked'
 ASSET_LINK = 'asset_link'
-FTRACK_ROOT_PATH = os.path.join(unreal.path.project_content_dir, "ftrack")
+FTRACK_ROOT_PATH = os.path.join(unreal.Path.project_content_dir, "ftrack")
 
 from ftrack_connect_pipeline.constants.asset import *
