@@ -10,7 +10,9 @@ from ftrack_connect_pipeline_unreal.plugin import (
     UnrealBasePluginWidget,
 )
 
-from ftrack_connect_pipeline_unreal.utils import custom_commands as unreal_utils
+from ftrack_connect_pipeline_unreal.utils import (
+    custom_commands as unreal_utils,
+)
 from ftrack_connect_pipeline_unreal.constants import asset as asset_const
 
 

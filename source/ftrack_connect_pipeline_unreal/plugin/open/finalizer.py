@@ -9,7 +9,9 @@ from ftrack_connect_pipeline_unreal.plugin import (
 )
 
 
-class UnrealOpenerFinalizerPlugin(plugin.OpenerFinalizerPlugin, UnrealBasePlugin):
+class UnrealOpenerFinalizerPlugin(
+    plugin.OpenerFinalizerPlugin, UnrealBasePlugin
+):
     '''Class representing a Finalizer Plugin
 
     .. note::

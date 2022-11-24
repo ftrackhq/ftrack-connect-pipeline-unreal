@@ -5,15 +5,17 @@ import logging
 
 from ftrack_connect_pipeline.asset.dcc_object import DccObject
 from ftrack_connect_pipeline_unreal.constants import asset as asset_const
-from ftrack_connect_pipeline_unreal.utils import custom_commands as unreal_utils
+from ftrack_connect_pipeline_unreal.utils import (
+    custom_commands as unreal_utils,
+)
 
-#import maya.cmds as cmds
+# import maya.cmds as cmds
 
 
 class UnrealDccObject(DccObject):
     '''UnrealDccObject class.'''
 
-    ftrack_plugin_id = asset_const.FTRACK_PLUGIN_ID
+    ftrack_plugin_id = 1234  # asset_const.FTRACK_PLUGIN_ID
     '''Plugin id used on some DCC applications '''
 
     def __init__(self, name=None, from_id=None, **kwargs):
@@ -68,7 +70,7 @@ class UnrealDccObject(DccObject):
             self.logger.error(error_message)
             raise RuntimeError(error_message)
 
-        #dcc_object_node = cmds.createNode(asset_const.FTRACK_PLUGIN_TYPE, name=name)
+        # dcc_object_node = cmds.createNode(asset_const.FTRACK_PLUGIN_TYPE, name=name)
 
         self.logger.debug('Creating new dcc object {}'.format(dcc_object_node))
         self.name = dcc_object_node
@@ -79,7 +81,7 @@ class UnrealDccObject(DccObject):
         Return true if the given *name* exists in the scene.
         '''
 
-        #if cmds.objExists(name):
+        # if cmds.objExists(name):
         #    return True
 
         return False
@@ -123,15 +125,15 @@ class UnrealDccObject(DccObject):
             '{0}.{1}'.format(__name__, __class__.__name__)
         )
         param_dict = {}
-        #if not cmds.objExists(object_name):
+        # if not cmds.objExists(object_name):
         #    error_message = "{} Object doesn't exists".format(object_name)
         #    logger.error(error_message)
         #    return param_dict
-        #all_attr = cmds.listAttr(object_name, c=True, se=True)
+        # all_attr = cmds.listAttr(object_name, c=True, se=True)
         for attr in all_attr:
-            #if cmds.attributeQuery(attr, node=object_name, msg=True):
+            # if cmds.attributeQuery(attr, node=object_name, msg=True):
             #    continue
-            #attr_value = cmds.getAttr('{}.{}'.format(object_name, attr))
+            # attr_value = cmds.getAttr('{}.{}'.format(object_name, attr))
             param_dict[attr] = attr_value
         return param_dict
 
@@ -154,3 +156,4 @@ class UnrealDccObject(DccObject):
             #         '{}.{}'.format(self.name, asset_const.ASSET_LINK),
             #         '{}.ftrack'.format(obj),
             #     )
+            pass

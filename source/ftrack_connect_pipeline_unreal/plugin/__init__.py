@@ -6,7 +6,9 @@ import unreal
 from ftrack_connect_pipeline import plugin
 from ftrack_connect_pipeline_qt import plugin as pluginWidget
 from ftrack_connect_pipeline_unreal import constants as unreal_constants
-from ftrack_connect_pipeline_unreal.utils import custom_commands as unreal_utils
+from ftrack_connect_pipeline_unreal.utils import (
+    custom_commands as unreal_utils,
+)
 from ftrack_connect_pipeline_unreal.asset import UnrealFtrackObjectManager
 from ftrack_connect_pipeline_unreal.asset.dcc_object import UnrealDccObject
 

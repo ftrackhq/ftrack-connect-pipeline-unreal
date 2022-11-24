@@ -9,7 +9,9 @@ from ftrack_connect_pipeline_unreal.plugin import (
 )
 
 
-class UnrealLoaderFinalizerPlugin(plugin.LoaderFinalizerPlugin, UnrealBasePlugin):
+class UnrealLoaderFinalizerPlugin(
+    plugin.LoaderFinalizerPlugin, UnrealBasePlugin
+):
     '''Class representing a Finalizer Plugin
 
     .. note::

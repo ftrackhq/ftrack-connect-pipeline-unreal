@@ -1,18 +1,25 @@
 # :coding: utf-8
 # :copyright: Copyright (c) 2014-2022 ftrack
-
-# Example DCC bootstrap script based on Maya userSetup.py
-
+import os
 import logging
 import functools
 
-# import maya.cmds as cmds
-# import maya.mel as mm
+from Qt import QtCore, QtWidgets, QtGui
+
+import unreal
 
 import ftrack_api
 
 from ftrack_connect_pipeline import constants as core_constants
 from ftrack_connect_pipeline.configure_logging import configure_logging
+
+# Create a qapplication, needs to be done before using ftrack_connect_pipeline_qt
+qapp = QtWidgets.QApplication.instance()
+if qapp is None:
+    qapp = QtWidgets.QApplication([])
+    qapp.setWindowIcon(
+        QtGui.QIcon(os.path.dirname(__file__) + '/UEFtrack.ico')
+    )
 
 from ftrack_connect_pipeline_qt import event
 from ftrack_connect_pipeline_qt import constants as qt_constants
@@ -20,7 +27,6 @@ from ftrack_connect_pipeline_qt.ui.asset_manager.model import AssetListModel
 
 from ftrack_connect_pipeline_unreal import host as unreal_host
 from ftrack_connect_pipeline_unreal.client import (
-    open as ftrack_open,
     load,
     asset_manager,
     publish,
@@ -29,20 +35,15 @@ from ftrack_connect_pipeline_unreal.client import (
 )
 from ftrack_connect_pipeline_qt.client import documentation
 
-from ftrack_connect_pipeline_unreal.utils import custom_commands as unreal_utils
+from ftrack_connect_pipeline_unreal.utils import (
+    custom_commands as unreal_utils,
+)
 
+from ftrack_connect_pipeline_unreal import menu as ftrack_menu_module
 
-extra_handlers = {
-    'unreal': {
-        'class': 'unreal.utils.UnrealGuiLogHandler',
-        'level': 'INFO',
-        'formatter': 'file',
-    }
-}
 configure_logging(
     'ftrack_connect_pipeline_unreal',
     extra_modules=['ftrack_connect_pipeline', 'ftrack_connect_pipeline_qt'],
-    extra_handlers=extra_handlers,
     propagate=False,
 )
 
@@ -52,31 +53,18 @@ logger = logging.getLogger('ftrack_connect_pipeline_unreal')
 
 created_widgets = dict()
 
+host = None
+
 
 def get_ftrack_menu(menu_name='ftrack', submenu_name=None):
     '''Get the current ftrack menu, create it if does not exists.'''
-    # gMainWindow = mm.eval('$temp1=$gMainWindow')
-    #
-    # if cmds.menu(menu_name, exists=True, parent=gMainWindow, label=menu_name):
-    #     menu = menu_name
-    #
-    # else:
-    #     menu = cmds.menu(
-    #         menu_name, parent=gMainWindow, tearOff=True, label=menu_name
-    #     )
+    menus = unreal.ToolMenus.get()
 
-    if submenu_name:
-        # if cmds.menuItem(
-        #     submenu_name, exists=True, parent=menu, label=submenu_name
-        # ):
-        #     submenu = submenu_name
-        # else:
-        #     submenu = cmds.menuItem(
-        #         submenu_name, subMenu=True, label=submenu_name, parent=menu
-        #     )
-        return submenu
-    else:
-        return menu
+    main_menu = menus.find_menu('LevelEditor.MainMenu')
+
+    return main_menu.add_sub_menu(
+        'Ftrack.Menu', 'Python', 'ftrack Menu', 'ftrack'
+    )
 
 
 def _open_widget(event_manager, asset_list_model, widgets, event):
@@ -131,12 +119,19 @@ def _open_widget(event_manager, asset_list_model, widgets, event):
         )
 
 
+class EventFilterWidget(QtWidgets.QWidget):
+    def eventFilter(self, obj, event):
+        return False
+
+
 def initialise():
+    global host
+
     # TODO : later we need to bring back here all the unreal initialisations
     #  from ftrack-connect-unreal
     # such as frame start / end etc....
 
-    logger.debug('Setting up the menu')
+    logger.debug('Setting up the host')
     session = ftrack_api.Session(auto_connect_event_hub=False)
 
     event_manager = event.QEventManager(
@@ -145,20 +140,14 @@ def initialise():
 
     host = unreal_host.UnrealHost(event_manager)
 
-    cmds.loadPlugin('ftrackUnrealPlugin.py', quiet=True)
+    logger.debug('Setting up the menu')
+
+    ftrack_menu_module.host = host
 
     # Shared asset manager model
     asset_list_model = AssetListModel(event_manager)
 
     widgets = list()
-    widgets.append(
-        (
-            core_constants.OPENER,
-            ftrack_open.UnrealQtOpenerClientWidget,
-            'Open',
-            'fileOpen',
-        )
-    )
     widgets.append(
         (
             qt_constants.ASSEMBLER_WIDGET,
@@ -170,7 +159,7 @@ def initialise():
     widgets.append(
         (
             core_constants.ASSET_MANAGER,
-            asset_manager.UnrealQtAssetManagerClientWidgetMixin,
+            asset_manager.UnrealQtAssetManagerClientWidget,
             'Asset Manager',
             'volumeCube',
         )
@@ -178,7 +167,7 @@ def initialise():
     widgets.append(
         (
             core_constants.PUBLISHER,
-            publish.UnrealQtPublisherClientWidgetMixin,
+            publish.UnrealQtPublisherClientWidget,
             'Publisher',
             'greasePencilExport',
         )
@@ -211,18 +200,25 @@ def initialise():
     ftrack_menu = get_ftrack_menu()
     # Register and hook the dialog in ftrack menu
     for item in widgets:
-        # if item == 'divider':
-        #     cmds.menuItem(divider=True)
-        #     continue
-        #
-        # widget_name, unused_widget_class, label, image = item
-        #
-        # cmds.menuItem(
-        #     parent=ftrack_menu,
-        #     label=label,
-        #     command=(functools.partial(host.launch_client, widget_name)),
-        #     image=":/{}.png".format(image),
-        # )
+        if item == 'divider':
+            continue
+
+        widget_name, unused_widget_class, label, image = item
+
+        menu_entry = unreal.ToolMenuEntry(
+            widget_name, type=unreal.MultiBlockType.MENU_ENTRY
+        )
+        menu_entry.set_label(label)
+        menu_entry.set_string_command(
+            unreal.ToolMenuStringCommandType.PYTHON,
+            widget_name,
+            string=(
+                "from ftrack_connect_pipeline_unreal.bootstrap import launch_dialog;launch_dialog('{}')".format(
+                    widget_name
+                )
+            ),
+        )
+        ftrack_menu.add_menu_entry(label, menu_entry)
 
     # Listen to widget launch events
     session.event_hub.subscribe(
@@ -234,9 +230,16 @@ def initialise():
         ),
     )
 
+    # Install dummy event filter to prevent Houdini from crashing during widget
+    # build.
+    # QtCore.QCoreApplication.instance().installEventFilter(EventFilterWidget())
+
     unreal_utils.init_unreal()
 
-    # host.launch_client(qt_constants.OPENER_WIDGET)
+
+def launch_dialog(widget_name):
+    '''Send an event to open *widget_name* client.'''
+    host.launch_client(widget_name)
 
 
-# cmds.evalDeferred('initialise()', lp=True)
+initialise()

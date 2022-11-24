@@ -2,6 +2,7 @@
 # :copyright: Copyright (c) 2014-2022 ftrack
 import threading
 from functools import wraps
+import logging
 
 from ftrack_connect_pipeline.utils import (
     get_save_path,
@@ -106,23 +107,23 @@ def delete_node(node):
 
 
 # (Only DCC with no live connections)
-    # def get_connected_objects_from_dcc_object(dcc_object_name):
-    #     '''Return all objects connected to the given *dcc_object_name*'''
-    #     # Get Unique id for a node using rt.getHandleByAnim(obj) and get the node
-    #     # from the unique id using rt.getAnimByHandler(id) please see the following
-    #     # link for more info: https://help.autodesk.com/view/MAXDEV/2023/ENU/?guid=GUID-25211F97-E81A-4D49-AFB6-50B30894FBEB
-    #     objects = []
-    #     dcc_object_node = rt.getNodeByName(dcc_object_name, exact=True)
-    #     if not dcc_object_node:
-    #         return
-    #     id_value = rt.getProperty(dcc_object_node, asset_const.ASSET_INFO_ID)
-    #     for parent in rt.rootScene.world.children:
-    #         children = [parent] + collect_children_nodes(parent)
-    #         for obj in children:
-    #             if rt.isProperty(obj, "ftrack"):
-    #                 if id_value == rt.getProperty(obj, "ftrack"):
-    #                     objects.append(obj)
-    #     return objects
+# def get_connected_objects_from_dcc_object(dcc_object_name):
+#     '''Return all objects connected to the given *dcc_object_name*'''
+#     # Get Unique id for a node using rt.getHandleByAnim(obj) and get the node
+#     # from the unique id using rt.getAnimByHandler(id) please see the following
+#     # link for more info: https://help.autodesk.com/view/MAXDEV/2023/ENU/?guid=GUID-25211F97-E81A-4D49-AFB6-50B30894FBEB
+#     objects = []
+#     dcc_object_node = rt.getNodeByName(dcc_object_name, exact=True)
+#     if not dcc_object_node:
+#         return
+#     id_value = rt.getProperty(dcc_object_node, asset_const.ASSET_INFO_ID)
+#     for parent in rt.rootScene.world.children:
+#         children = [parent] + collect_children_nodes(parent)
+#         for obj in children:
+#             if rt.isProperty(obj, "ftrack"):
+#                 if id_value == rt.getProperty(obj, "ftrack"):
+#                     objects.append(obj)
+#     return objects
 
 
 ### SELECTION ###
@@ -154,7 +155,7 @@ def create_selection_set(set_name):
 
 def selection_empty():
     '''Empty the current selection'''
-    #return rt.selection.count == 0
+    # return rt.selection.count == 0
     pass
 
 
@@ -172,13 +173,13 @@ def select_only_type(obj_type):
 
 
 def open_file(path, options=None):
-    '''Native open file function '''
+    '''Native open file function'''
     # return cmds.file(path, o=True, f=True)
     pass
 
 
 def import_file(path, options=None):
-    '''Native import file function '''
+    '''Native import file function'''
     # return cmds.file(path, o=True, f=True)
     pass
 
@@ -223,7 +224,7 @@ def save_file(save_path, context_id=None, session=None, temp=True, save=True):
 
 
 def reference_file(path, options=None):
-    '''Native reference file function '''
+    '''Native reference file function'''
     # return cmds.file(path, o=True, f=True)
     pass
 
@@ -258,14 +259,14 @@ def unload_reference_node(reference_node):
 
 def load_reference_node(reference_node):
     '''Disable reference'''
-    #reference_node.disabled = False
+    # reference_node.disabled = False
     pass
 
 
 def update_reference_path(reference_node, component_path):
     '''Update the path of the given *reference_node* with the given
     *component_path*'''
-    #reference_node.filename = component_path
+    # reference_node.filename = component_path
     pass
 
 
@@ -278,4 +279,3 @@ def get_time_range():
     # end = rt.animationRange.end
     # return (start, end)
     pass
-
