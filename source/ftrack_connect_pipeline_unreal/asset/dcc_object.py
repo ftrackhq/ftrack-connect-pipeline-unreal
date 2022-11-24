@@ -141,17 +141,9 @@ class UnrealDccObject(DccObject):
         *objects* List of Unreal DAG objects
         '''
         for obj in objects:
-            pass
-            #TODO: create the ftrack attribute to the object and link the asset info id in there.
-            # Also we can edit the json file the assetlink property and add the object name in there (find if there is aan object id)
-            # if cmds.lockNode(obj, q=True)[0]:
-            #     cmds.lockNode(obj, l=False)
-            #
-            # if not cmds.attributeQuery('ftrack', n=obj, exists=True):
-            #     cmds.addAttr(obj, ln='ftrack', at='message')
-            #
-            # if not cmds.listConnections('{}.ftrack'.format(obj)):
-            #     cmds.connectAttr(
-            #         '{}.{}'.format(self.name, asset_const.ASSET_LINK),
-            #         '{}.ftrack'.format(obj),
-            #     )
+            unreal.EditorAssetLibrary.set_metadata_tag(
+                obj, 'ftrack', str(self.get(asset_const.ASSET_INFO_ID))
+            )
+            # TODO: Try to use the ASSET Data full name here
+            self[asset_const.ASSET_LINK].append(obj)
+
