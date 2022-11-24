@@ -3,11 +3,14 @@
 import threading
 from functools import wraps
 import os
+import logging
 
 from ftrack_connect_pipeline.utils import (
     get_save_path,
 )
 from ftrack_connect_pipeline_unreal.constants import asset as asset_const
+
+import unreal
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +65,9 @@ def get_ftrack_nodes():
 
 def get_current_scene_objects():
     '''Returns all the objects in the scene'''
-    # return set(cmds.ls(l=True))
-    pass
+    # Return the list of all the assets found in the DirectoryPath.
+    # https://docs.unrealengine.com/5.1/en-US/PythonAPI/class/EditorAssetLibrary.html?highlight=editorassetlibrary#unreal.EditorAssetLibrary
+    return unreal.EditorAssetLibrary.list_assets(unreal.Paths.project_content_dir(), recursive=True)
 
 
 def collect_children_nodes(node):
