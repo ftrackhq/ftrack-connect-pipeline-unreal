@@ -39,8 +39,6 @@ from ftrack_connect_pipeline_unreal.utils import (
     custom_commands as unreal_utils,
 )
 
-from ftrack_connect_pipeline_unreal import menu as ftrack_menu_module
-
 configure_logging(
     'ftrack_connect_pipeline_unreal',
     extra_modules=['ftrack_connect_pipeline', 'ftrack_connect_pipeline_qt'],
@@ -141,8 +139,6 @@ def initialise():
     host = unreal_host.UnrealHost(event_manager)
 
     logger.debug('Setting up the menu')
-
-    ftrack_menu_module.host = host
 
     # Shared asset manager model
     asset_list_model = AssetListModel(event_manager)

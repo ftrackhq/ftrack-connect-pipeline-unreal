@@ -9,18 +9,7 @@ import traceback
 import sys
 import os
 
-print(
-    '[ftrack] (Debug) Environment variables: \n{}'.format(
-        '\n'.join(
-            [
-                '{}={}'.format(key, value)
-                for (key, value) in list(os.environ.items())
-            ]
-        )
-    )
-)
-
-# Make sure framework is found, Unreal interpreter sys path is not bootstrapped from PYTHONPATH
+# Make sure framework is found, Unreal Python interpreter is not preloaded from PYTHONPATH
 for p in os.environ['PYTHONPATH'].split(os.pathsep):
     print('[ftrack] Adding to sys path: "{}"\n'.format(p))
     sys.path.append(p)
