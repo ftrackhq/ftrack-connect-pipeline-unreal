@@ -304,17 +304,18 @@ def get_time_range():
 
 
 def compile_capture_args(options):
-    str_capture_args = ''
+    capture_args = []
     if 'resolution' in options:
         resolution = options['resolution']  # On the form 320x240(4:3)
         parts = resolution.split('(')[0].split('x')
-        str_capture_args += ' -ResX={} -ResY={}'.format(parts[0], parts[1])
+        capture_args.append('-ResX={}'.format(parts[0]))
+        capture_args.append('-ResY={}'.format(parts[1]))
     if 'movie_quality' in options:
         quality = int(options['movie_quality'])
-        str_capture_args += ' -MovieQuality={}'.format(
-            max(0, min(quality, 100))
+        capture_args.append(
+            '-MovieQuality={}'.format(max(0, min(quality, 100)))
         )
-    return str_capture_args
+    return capture_args
 
 
 def render(
@@ -430,7 +431,7 @@ def render(
         if frame is not None:
             cmdline_args.append("-MovieStartFrame={}".format(frame))
             cmdline_args.append("-MovieEndFrame={}".format(frame))
-        cmdline_args.append(capture_args)
+        cmdline_args.extend(capture_args)
         cmdline_args.append("-NoTextureStreaming")
         cmdline_args.append("-NoLoadingScreen")
         cmdline_args.append("-NoScreenMessages")
