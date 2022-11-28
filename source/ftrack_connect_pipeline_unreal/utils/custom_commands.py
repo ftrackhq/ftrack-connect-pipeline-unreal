@@ -3,6 +3,11 @@
 import threading
 from functools import wraps
 import logging
+import os
+import sys
+import subprocess
+
+import unreal
 
 from ftrack_connect_pipeline.utils import (
     get_save_path,
@@ -124,6 +129,20 @@ def delete_node(node):
 #                 if id_value == rt.getProperty(obj, "ftrack"):
 #                     objects.append(obj)
 #     return objects
+
+
+def get_all_sequences(as_names=True):
+    '''
+    Returns a list of of all sequences names
+    '''
+    result = []
+    actors = unreal.EditorLevelLibrary.get_all_level_actors()
+    for actor in actors:
+        if actor.static_class() == unreal.LevelSequenceActor.static_class():
+            seq = actor.load_sequence()
+            result.append(seq.get_name() if as_names else seq)
+            break
+    return result
 
 
 ### SELECTION ###
@@ -279,3 +298,179 @@ def get_time_range():
     # end = rt.animationRange.end
     # return (start, end)
     pass
+
+
+### RENDERING ###
+
+
+def compile_capture_args(options):
+    str_capture_args = ''
+    if 'resolution' in options:
+        resolution = options['resolution']  # On the form 320x240(4:3)
+        parts = resolution.split('(')[0].split('x')
+        str_capture_args += ' -ResX={} -ResY={}'.format(parts[0], parts[1])
+    if 'movie_quality' in options:
+        quality = int(options['movie_quality'])
+        str_capture_args += ' -MovieQuality={}'.format(
+            max(0, min(quality, 100))
+        )
+    return str_capture_args
+
+
+def render(
+    sequence_path,
+    unreal_map_path,
+    content_name,
+    destination_path,
+    fps,
+    capture_args,
+    logger,
+    image_format=None,
+    frame=None,
+):
+    '''
+    Render a video or image sequence from the given sequence actor.
+
+    :param sequence_path: The path of the sequence within the level.
+    :param unreal_map_path: The level to render.
+    :param content_name: The name of the render.
+    :param destination_path: The path to render to.
+    :param fps: The framerate.
+    :param capture_args: White space separate list of additional capture arguments.
+    :param logger: A logger to log to.
+    :param image_format: (Optional) The image sequence file format, if None a video (.avi) will be rendered.
+    :param frame: (Optional) The target frame to render within sequence.
+    :return:
+    '''
+
+    def __generate_target_file_path(
+        destination_path, content_name, image_format, frame
+    ):
+        '''Generate the output file path based on *destination_path* and *content_name*'''
+        # Sequencer can only render to avi file format
+        if image_format is None:
+            output_filename = '{}.avi'.format(content_name)
+        else:
+            if frame is None:
+                output_filename = (
+                    '{}'.format(content_name)
+                    + '.{frame}.'
+                    + '{}'.format(image_format)
+                )
+            else:
+                output_filename = '{}.{}.{}'.format(
+                    content_name, '%04d' % frame, image_format
+                )
+        output_filepath = os.path.join(destination_path, output_filename)
+        return output_filepath
+
+    def __build_process_args(
+        sequence_path,
+        unreal_map_path,
+        content_name,
+        destination_path,
+        fps,
+        image_format,
+        capture_args,
+        frame,
+    ):
+        '''Build unreal command line arguments based on the arguments given.'''
+        # Render the sequence to a movie file using the following
+        # command-line arguments
+        cmdline_args = []
+
+        # Note that any command-line arguments (usually paths) that could
+        # contain spaces must be enclosed between quotes
+        unreal_exec_path = '"{}"'.format(sys.executable)
+
+        # Get the Unreal project to load
+        unreal_project_filename = '{}.uproject'.format(
+            unreal.SystemLibrary.get_game_name()
+        )
+        unreal_project_path = os.path.join(
+            unreal.SystemLibrary.get_project_directory(),
+            unreal_project_filename,
+        )
+        unreal_project_path = '"{}"'.format(unreal_project_path)
+
+        # Important to keep the order for these arguments
+        cmdline_args.append(unreal_exec_path)  # Unreal executable path
+        cmdline_args.append(unreal_project_path)  # Unreal project
+        cmdline_args.append(
+            unreal_map_path
+        )  # Level to load for rendering the sequence
+
+        # Command-line arguments for Sequencer Render to Movie
+        # See: https://docs.unrealengine.com/en-us/Engine/Sequencer/
+        #           Workflow/RenderingCmdLine
+        sequence_path = '-LevelSequence={}'.format(sequence_path)
+        cmdline_args.append(sequence_path)  # The sequence to render
+
+        output_path = '-MovieFolder="{}"'.format(destination_path)
+        cmdline_args.append(
+            output_path
+        )  # exporters folder, must match the work template
+
+        movie_name_arg = '-MovieName={}'.format(content_name)
+        cmdline_args.append(movie_name_arg)  # exporters filename
+
+        cmdline_args.append("-game")
+        cmdline_args.append(
+            '-MovieSceneCaptureType=/Script/MovieSceneCapture.'
+            'AutomatedLevelSequenceCapture'
+        )
+        cmdline_args.append("-ForceRes")
+        cmdline_args.append("-Windowed")
+        cmdline_args.append("-MovieCinematicMode=yes")
+        if image_format is not None:
+            cmdline_args.append("-MovieFormat={}".format(image_format.upper()))
+        else:
+            cmdline_args.append("-MovieFormat=Video")
+        cmdline_args.append("-MovieFrameRate=" + str(fps))
+        if frame is not None:
+            cmdline_args.append("-MovieStartFrame={}".format(frame))
+            cmdline_args.append("-MovieEndFrame={}".format(frame))
+        cmdline_args.append(capture_args)
+        cmdline_args.append("-NoTextureStreaming")
+        cmdline_args.append("-NoLoadingScreen")
+        cmdline_args.append("-NoScreenMessages")
+        return cmdline_args
+
+    output_filepath = __generate_target_file_path(
+        destination_path, content_name, image_format, frame
+    )
+    if os.path.isfile(output_filepath):
+        # Must delete it first, otherwise the Sequencer will add a number
+        # in the filename
+        try:
+            os.remove(output_filepath)
+        except OSError as e:
+
+            msg = (
+                'Could not delete {}. The Sequencer will not be able to'
+                ' exporters the movie to that file.'.format(output_filepath)
+            )
+            logger.error(msg)
+            return False, {'message': msg}
+
+    # Unreal will be started in game mode to render the video
+    cmdline_args = __build_process_args(
+        sequence_path,
+        unreal_map_path,
+        content_name,
+        destination_path,
+        fps,
+        image_format,
+        capture_args,
+        frame,
+    )
+
+    logger.debug('Sequencer command-line arguments: {}'.format(cmdline_args))
+
+    # Send the arguments as a single string because some arguments could
+    # contain spaces and we don't want those to be quoted
+    envs = os.environ.copy()
+    envs.update({'FTRACK_CONNECT_DISABLE_INTEGRATION_LOAD': '1'})
+    subprocess.call(' '.join(cmdline_args), env=envs)
+
+    return os.path.isfile(output_filepath), output_filepath
