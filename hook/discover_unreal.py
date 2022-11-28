@@ -54,11 +54,34 @@ def on_launch_pipeline_unreal(session, event):
     engine_path = os.path.realpath(
         os.path.join(unreal_editor_exe, '..', '..', '..')
     )
+    script_source = os.path.join(unreal_script_path, 'init_unreal.py')
     script_destination = os.path.join(
         engine_path, 'Content', 'Python', 'init_unreal.py'
     )
-    if not os.path.exists(script_destination):
-        script_source = os.path.join(unreal_script_path, 'init_unreal.py')
+    in_sync = os.path.exists(script_destination)
+    if in_sync:
+        # Check size
+        size_source = os.path.getsize(script_source)
+        size_destination = os.path.getsize(script_destination)
+        if size_destination != size_source:
+            logger.warning(
+                'Unreal init script size differs ({}<>{}), updating...'.format(
+                    size_destination, size_source
+                )
+            )
+            in_sync = False
+        else:
+            # Check modification time
+            modtime_source = os.path.getmtime(script_source)
+            modtime_destination = os.path.getmtime(script_destination)
+            if modtime_destination != modtime_source:
+                logger.warning(
+                    'Unreal init script modification time differs ({}<>{}), updating...'.format(
+                        modtime_destination, modtime_source
+                    )
+                )
+                in_sync = False
+    if not in_sync:
         logger.warning(
             'Attempting to install Unreal init script "{}" > "{}"'.format(
                 script_source, script_destination
@@ -66,6 +89,14 @@ def on_launch_pipeline_unreal(session, event):
         )
         try:
             shutil.copy(script_source, script_destination)
+            logger.info('Installed init script.')
+            # Also copy icon
+            icon_source = os.path.join(unreal_script_path, 'UEFtrack.ico')
+            icon_destination = os.path.join(
+                engine_path, 'Content', 'Python', 'UEFtrack.ico'
+            )
+            shutil.copy(icon_source, icon_destination)
+            logger.info('Installed Unreal icon.')
         except PermissionError as pe:
             logger.exception(pe)
             logger.error(
@@ -74,6 +105,8 @@ def on_launch_pipeline_unreal(session, event):
                 )
             )
             raise
+    else:
+        logger.info('Unreal init script is in sync, no update required.')
     selection = event['data'].get('context', {}).get('selection', [])
     if selection:
         entity = session.get('Context', selection[0]['entityId'])
