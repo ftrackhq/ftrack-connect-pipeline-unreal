@@ -9,8 +9,6 @@ from ftrack_connect_pipeline_unreal.utils import (
     custom_commands as unreal_utils,
 )
 
-# import maya.cmds as cmds
-
 
 class UnrealDccObject(DccObject):
     '''UnrealDccObject class.'''

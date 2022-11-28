@@ -4,7 +4,6 @@
 import time
 import unreal
 
-# import maya.cmds as cmds
 
 from ftrack_connect_pipeline import constants as core_constants
 from ftrack_connect_pipeline.host.engine import AssetManagerEngine
