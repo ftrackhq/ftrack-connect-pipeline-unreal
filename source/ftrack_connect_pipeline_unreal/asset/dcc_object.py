@@ -7,16 +7,18 @@ import json
 
 from ftrack_connect_pipeline.asset.dcc_object import DccObject
 from ftrack_connect_pipeline_unreal.constants import asset as asset_const
-from ftrack_connect_pipeline_unreal.utils import custom_commands as unreal_utils
+from ftrack_connect_pipeline_unreal.utils import (
+    custom_commands as unreal_utils,
+)
 
 import unreal
+
 
 class UnrealDccObject(DccObject):
     '''UnrealDccObject class.'''
 
-    ftrack_plugin_id = None #asset_const.FTRACK_PLUGIN_ID
+    ftrack_plugin_id = None  # asset_const.FTRACK_PLUGIN_ID
     '''Plugin id used on some DCC applications '''
-
 
     @property
     def ftrack_file_path(self):
@@ -24,7 +26,9 @@ class UnrealDccObject(DccObject):
         Return the json file path of the current dcc object.
         '''
         # This property is added for convenience in this DCC only.
-        return os.path.join(asset_const.FTRACK_ROOT_PATH, "{}.json".format(self.name))
+        return os.path.join(
+            asset_const.FTRACK_ROOT_PATH, "{}.json".format(self.name)
+        )
 
     def __init__(self, name=None, from_id=None, **kwargs):
         '''
@@ -146,4 +150,3 @@ class UnrealDccObject(DccObject):
             )
             # TODO: Try to use the ASSET Data full name here
             self[asset_const.ASSET_LINK].append(obj)
-
