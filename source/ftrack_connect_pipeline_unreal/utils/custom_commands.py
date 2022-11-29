@@ -67,7 +67,7 @@ def get_current_scene_objects():
     '''Returns all the objects in the scene'''
     # Return the list of all the assets found in the DirectoryPath.
     # https://docs.unrealengine.com/5.1/en-US/PythonAPI/class/EditorAssetLibrary.html?highlight=editorassetlibrary#unreal.EditorAssetLibrary
-    return unreal.EditorAssetLibrary.list_assets(unreal.Paths.project_content_dir(), recursive=True)
+    return unreal.EditorAssetLibrary.list_assets("/Game", recursive=True)
 
 
 def collect_children_nodes(node):
@@ -99,9 +99,11 @@ def delete_all_children(node):
 
 
 def node_exists(node_name):
-    '''Check if node_name exist in the scene'''
-    # return cmds.objExists(object_name)
-    pass
+    '''Check if node_name exist in the project'''
+    content = os.listdir(asset_const.FTRACK_ROOT_PATH)
+    if node_name in content:
+        return True
+    return False
 
 
 def get_node(node_name):
