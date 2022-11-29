@@ -113,23 +113,23 @@ def delete_node(node):
 
 
 # (Only DCC with no live connections)
-    # def get_connected_objects_from_dcc_object(dcc_object_name):
-    #     '''Return all objects connected to the given *dcc_object_name*'''
-    #     # Get Unique id for a node using rt.getHandleByAnim(obj) and get the node
-    #     # from the unique id using rt.getAnimByHandler(id) please see the following
-    #     # link for more info: https://help.autodesk.com/view/MAXDEV/2023/ENU/?guid=GUID-25211F97-E81A-4D49-AFB6-50B30894FBEB
-    #     objects = []
-    #     dcc_object_node = rt.getNodeByName(dcc_object_name, exact=True)
-    #     if not dcc_object_node:
-    #         return
-    #     id_value = rt.getProperty(dcc_object_node, asset_const.ASSET_INFO_ID)
-    #     for parent in rt.rootScene.world.children:
-    #         children = [parent] + collect_children_nodes(parent)
-    #         for obj in children:
-    #             if rt.isProperty(obj, "ftrack"):
-    #                 if id_value == rt.getProperty(obj, "ftrack"):
-    #                     objects.append(obj)
-    #     return objects
+# def get_connected_objects_from_dcc_object(dcc_object_name):
+#     '''Return all objects connected to the given *dcc_object_name*'''
+#     # Get Unique id for a node using rt.getHandleByAnim(obj) and get the node
+#     # from the unique id using rt.getAnimByHandler(id) please see the following
+#     # link for more info: https://help.autodesk.com/view/MAXDEV/2023/ENU/?guid=GUID-25211F97-E81A-4D49-AFB6-50B30894FBEB
+#     objects = []
+#     dcc_object_node = rt.getNodeByName(dcc_object_name, exact=True)
+#     if not dcc_object_node:
+#         return
+#     id_value = rt.getProperty(dcc_object_node, asset_const.ASSET_INFO_ID)
+#     for parent in rt.rootScene.world.children:
+#         children = [parent] + collect_children_nodes(parent)
+#         for obj in children:
+#             if rt.isProperty(obj, "ftrack"):
+#                 if id_value == rt.getProperty(obj, "ftrack"):
+#                     objects.append(obj)
+#     return objects
 
 
 def get_all_sequences(as_names=True):
@@ -175,7 +175,7 @@ def create_selection_set(set_name):
 
 def selection_empty():
     '''Empty the current selection'''
-    #return rt.selection.count == 0
+    # return rt.selection.count == 0
     pass
 
 
@@ -193,13 +193,13 @@ def select_only_type(obj_type):
 
 
 def open_file(path, options=None):
-    '''Native open file function '''
+    '''Native open file function'''
     # return cmds.file(path, o=True, f=True)
     pass
 
 
 def import_file(path, options=None):
-    '''Native import file function '''
+    '''Native import file function'''
     # return cmds.file(path, o=True, f=True)
     pass
 
@@ -244,7 +244,7 @@ def save_file(save_path, context_id=None, session=None, temp=True, save=True):
 
 
 def reference_file(path, options=None):
-    '''Native reference file function '''
+    '''Native reference file function'''
     # return cmds.file(path, o=True, f=True)
     pass
 
@@ -279,14 +279,14 @@ def unload_reference_node(reference_node):
 
 def load_reference_node(reference_node):
     '''Disable reference'''
-    #reference_node.disabled = False
+    # reference_node.disabled = False
     pass
 
 
 def update_reference_path(reference_node, component_path):
     '''Update the path of the given *reference_node* with the given
     *component_path*'''
-    #reference_node.filename = component_path
+    # reference_node.filename = component_path
     pass
 
 
@@ -438,22 +438,44 @@ def render(
         cmdline_args.append("-NoScreenMessages")
         return cmdline_args
 
+    try:
+        # Check if any existing files
+        if os.path.exists(destination_path) and os.path.isfile(
+            destination_path
+        ):
+            logger.warning(
+                'Removing existing destination file: "{}"'.format(
+                    destination_path
+                )
+            )
+            os.remove(destination_path)
+        if os.path.exists(destination_path):
+            for fn in os.listdir(destination_path):
+                # Remove files having the same prefix as destination file
+                if fn.split('.')[0] == content_name:
+                    file_path = os.path.join(destination_path, fn)
+                    logger.warning(
+                        'Removing existing file: "{}"'.format(file_path)
+                    )
+                    os.remove(file_path)
+        else:
+            # Create it
+            logger.info(
+                'Creating output folder: "{}"'.format(destination_path)
+            )
+            os.makedirs(destination_path)
+    except Exception as e:
+        logger.exception(e)
+        msg = (
+            'Could not delete {} contents. The Sequencer will not be able to'
+            ' exporters the media to that location.'.format(destination_path)
+        )
+        logger.error(msg)
+        return False, {'message': msg}
+
     output_filepath = __generate_target_file_path(
         destination_path, content_name, image_format, frame
     )
-    if os.path.isfile(output_filepath):
-        # Must delete it first, otherwise the Sequencer will add a number
-        # in the filename
-        try:
-            os.remove(output_filepath)
-        except OSError as e:
-
-            msg = (
-                'Could not delete {}. The Sequencer will not be able to'
-                ' exporters the movie to that file.'.format(output_filepath)
-            )
-            logger.error(msg)
-            return False, {'message': msg}
 
     # Unreal will be started in game mode to render the video
     cmdline_args = __build_process_args(
@@ -475,5 +497,4 @@ def render(
     envs.update({'FTRACK_CONNECT_DISABLE_INTEGRATION_LOAD': '1'})
     subprocess.call(' '.join(cmdline_args), env=envs)
 
-    return os.path.isfile(output_filepath), output_filepath
-
+    return output_filepath
