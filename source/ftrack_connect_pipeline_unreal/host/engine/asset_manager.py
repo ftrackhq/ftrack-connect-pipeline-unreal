@@ -4,12 +4,13 @@
 import time
 import unreal
 
-#import maya.cmds as cmds
 
 from ftrack_connect_pipeline import constants as core_constants
 from ftrack_connect_pipeline.host.engine import AssetManagerEngine
 from ftrack_connect_pipeline.asset.asset_info import FtrackAssetInfo
-from ftrack_connect_pipeline_unreal.utils import custom_commands as unreal_utils
+from ftrack_connect_pipeline_unreal.utils import (
+    custom_commands as unreal_utils,
+)
 from ftrack_connect_pipeline_unreal.constants import asset as asset_const
 from ftrack_connect_pipeline_unreal.constants.asset import modes as modes_const
 from ftrack_connect_pipeline_unreal.asset import UnrealFtrackObjectManager
@@ -380,13 +381,14 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
 
         if options.get('clear_selection'):
             # cmds.select(cl=True)
+            pass
 
         # nodes = cmds.listConnections(
         #    '{}.{}'.format(self.dcc_object.name, asset_const.ASSET_LINK)
         # )
         for node in nodes:
             try:
-                #.select(node, add=True)
+                # .select(node, add=True)
                 result.append(str(node))
                 status = core_constants.SUCCESS_STATUS
             except Exception as error:
@@ -687,10 +689,10 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
             # or []
         )
         for node in nodes:
-            #if cmds.nodeType(node) == 'reference':
-                reference_node = unreal_utils.getReferenceNode(node)
-                if reference_node:
-                    break
+            # if cmds.nodeType(node) == 'reference':
+            reference_node = unreal_utils.getReferenceNode(node)
+            if reference_node:
+                break
 
         if reference_node:
             self.logger.debug("Removing reference: {}".format(reference_node))

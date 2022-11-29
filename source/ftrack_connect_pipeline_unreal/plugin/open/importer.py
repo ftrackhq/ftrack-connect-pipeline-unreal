@@ -10,12 +10,16 @@ from ftrack_connect_pipeline_unreal.plugin import (
     UnrealBasePluginWidget,
 )
 
-from ftrack_connect_pipeline_unreal.utils import custom_commands as unreal_utils
+from ftrack_connect_pipeline_unreal.utils import (
+    custom_commands as unreal_utils,
+)
 from ftrack_connect_pipeline_unreal.constants.asset import modes as load_const
 from ftrack_connect_pipeline_unreal.constants import asset as asset_const
 
 
-class UnrealOpenerImporterPlugin(plugin.OpenerImporterPlugin, UnrealBasePlugin):
+class UnrealOpenerImporterPlugin(
+    plugin.OpenerImporterPlugin, UnrealBasePlugin
+):
     '''Class representing a Collector Plugin
 
     .. note::
