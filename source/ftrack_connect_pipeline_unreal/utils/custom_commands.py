@@ -112,9 +112,9 @@ def get_node(node_name):
     pass
 
 
-def delete_node(node):
-    '''Delete the given *node*'''
-    # return cmds.delete(object_name)
+def delete_node(node_name):
+    '''Delete the given *node_name*'''
+    unreal.EditorAssetLibrary.delete_asset(node_name)
     pass
 
 
