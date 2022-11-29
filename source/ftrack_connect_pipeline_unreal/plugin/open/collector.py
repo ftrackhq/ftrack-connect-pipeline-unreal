@@ -9,7 +9,9 @@ from ftrack_connect_pipeline_unreal.plugin import (
 )
 
 
-class UnrealOpenerCollectorPlugin(plugin.OpenerCollectorPlugin, UnrealBasePlugin):
+class UnrealOpenerCollectorPlugin(
+    plugin.OpenerCollectorPlugin, UnrealBasePlugin
+):
     '''Class representing a Collector Plugin
 
     .. note::

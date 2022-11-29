@@ -5,7 +5,9 @@ from Qt import QtWidgets, QtCore
 
 from ftrack_connect_pipeline_qt.client import log_viewer
 
-from ftrack_connect_pipeline_unreal.utils.custom_commands import get_main_window
+from ftrack_connect_pipeline_unreal.utils.custom_commands import (
+    get_main_window,
+)
 
 
 class UnrealQtLogViewerClientWidget(log_viewer.QtLogViewerClientWidget):

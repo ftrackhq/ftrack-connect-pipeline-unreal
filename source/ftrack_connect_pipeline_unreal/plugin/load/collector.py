@@ -9,7 +9,9 @@ from ftrack_connect_pipeline_unreal.plugin import (
 )
 
 
-class UnrealLoaderCollectorPlugin(plugin.LoaderCollectorPlugin, UnrealBasePlugin):
+class UnrealLoaderCollectorPlugin(
+    plugin.LoaderCollectorPlugin, UnrealBasePlugin
+):
     '''Class representing a Collector Plugin
 
     .. note::
