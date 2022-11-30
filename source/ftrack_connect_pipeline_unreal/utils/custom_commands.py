@@ -2,13 +2,12 @@
 # :copyright: Copyright (c) 2014-2022 ftrack
 import threading
 from functools import wraps
-import logging
 import os
+import logging
 import sys
 import subprocess
 
 import unreal
-
 
 from ftrack_connect_pipeline.utils import (
     get_save_path,
@@ -56,14 +55,21 @@ def get_main_window():
 
 
 def get_ftrack_nodes():
-    # return cmds.ls(type=asset_const.FTRACK_PLUGIN_TYPE)
-    pass
+    ftrack_nodes = []
+    content = os.listdir(asset_const.FTRACK_ROOT_PATH)
+    for item_name in content:
+        if item_name not in "ftrackdata":
+            continue
+        if item_name.endswith(".json"):
+            ftrack_nodes.append(os.path.splitext(item_name)[0])
+    return ftrack_nodes
 
 
 def get_current_scene_objects():
     '''Returns all the objects in the scene'''
-    # return set(cmds.ls(l=True))
-    pass
+    # Return the list of all the assets found in the DirectoryPath.
+    # https://docs.unrealengine.com/5.1/en-US/PythonAPI/class/EditorAssetLibrary.html?highlight=editorassetlibrary#unreal.EditorAssetLibrary
+    return unreal.EditorAssetLibrary.list_assets("/Game", recursive=True)
 
 
 def collect_children_nodes(node):
@@ -95,9 +101,11 @@ def delete_all_children(node):
 
 
 def node_exists(node_name):
-    '''Check if node_name exist in the scene'''
-    # return cmds.objExists(object_name)
-    pass
+    '''Check if node_name exist in the project'''
+    content = os.listdir(asset_const.FTRACK_ROOT_PATH)
+    if node_name in content:
+        return True
+    return False
 
 
 def get_node(node_name):
@@ -106,9 +114,9 @@ def get_node(node_name):
     pass
 
 
-def delete_node(node):
-    '''Delete the given *node*'''
-    # return cmds.delete(object_name)
+def delete_node(node_name):
+    '''Delete the given *node_name*'''
+    unreal.EditorAssetLibrary.delete_asset(node_name)
     pass
 
 
@@ -144,7 +152,6 @@ def get_all_sequences(as_names=True):
             result.append(seq.get_name() if as_names else seq)
             break
     return result
-
 
 ### SELECTION ###
 
@@ -498,3 +505,4 @@ def render(
     subprocess.call(' '.join(cmdline_args), env=envs)
 
     return output_filepath
+
