@@ -117,7 +117,7 @@ def delete_node(node_name):
     unreal.EditorAssetLibrary.delete_asset(node_name)
     pass
 
-
+# TODO: need this one for unreal
 # (Only DCC with no live connections)
 # def get_connected_objects_from_dcc_object(dcc_object_name):
 #     '''Return all objects connected to the given *dcc_object_name*'''
@@ -149,12 +149,14 @@ def select_all():
 
 def deselect_all():
     '''Clear the selection'''
+    # TODO: need this
     # rt.clearSelection()
     pass
 
 
 def add_node_to_selection(node):
     '''Add the given *node* to the current selection'''
+    #TODO: need this one
     # rt.selectMore(node)
     pass
 
@@ -192,6 +194,7 @@ def open_file(path, options=None):
 
 def import_file(path, options=None):
     '''Native import file function'''
+    # TODO: import the file to the project
     # return cmds.file(path, o=True, f=True)
     pass
 
