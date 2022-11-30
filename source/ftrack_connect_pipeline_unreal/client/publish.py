@@ -21,6 +21,7 @@ class UnrealQtPublisherClientWidget(QtPublisherClientWidget):
             event_manager, parent=parent
         )
         self.setWindowTitle('Unreal Pipeline Publisher')
+        self.resize(350, 800)
 
     def get_theme_background_style(self):
         return 'unreal'
