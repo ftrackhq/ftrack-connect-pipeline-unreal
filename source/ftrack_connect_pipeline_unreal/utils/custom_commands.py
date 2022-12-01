@@ -153,6 +153,7 @@ def get_all_sequences(as_names=True):
             break
     return result
 
+
 ### SELECTION ###
 
 
@@ -199,16 +200,31 @@ def select_only_type(obj_type):
 ### FILE OPERATIONS ###
 
 
+def get_asset_relative_path(self, asset_version_entity):
+    ftrack_task = asset_version_entity['task']
+    # location.
+    links_for_task = self.session.query(
+        'select link from Task where id is "{}"'.format(ftrack_task['id'])
+    ).first()['link']
+    relative_path = ""
+    # remove the project
+    links_for_task.pop(0)
+    for link in links_for_task:
+        relative_path += link['name'].replace(' ', '_')
+        relative_path += '/'
+    return relative_path
+
+
 def open_file(path, options=None):
     '''Native open file function'''
     # return cmds.file(path, o=True, f=True)
     pass
 
 
-def import_file(path, options=None):
-    '''Native import file function'''
-    # return cmds.file(path, o=True, f=True)
-    pass
+def import_file(task):
+    '''Import an asset based on the *task*'''
+    unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+    return task.imported_object_paths[0]
 
 
 def save_file(save_path, context_id=None, session=None, temp=True, save=True):
@@ -506,3 +522,37 @@ def render(
 
     return output_filepath
 
+
+#### MISC ####
+
+
+def rename_object_with_prefix(self, loaded_obj, prefix):
+    '''This method allow renaming a UObject to put a prefix to work along
+    with UE4 naming convention.
+      https://github.com/Allar/ue4-style-guide'''
+    assert loaded_obj != None
+    new_name_with_prefix = ''
+    if loaded_obj:
+        object_ad = unreal.EditorAssetLibrary.find_asset_data(
+            loaded_obj.get_path_name()
+        )
+        if object_ad:
+            if unreal.EditorAssetLibrary.rename_asset(
+                object_ad.object_path,
+                str(object_ad.package_path)
+                + '/'
+                + prefix
+                + '_'
+                + str(object_ad.asset_name),
+            ):
+                new_name_with_prefix = '{}_{}'.format(
+                    prefix, object_ad.asset_name
+                )
+    return new_name_with_prefix
+
+
+def assets_to_paths(self, assets):
+    result = []
+    for asset in assets:
+        result.append(asset.get_path_name())
+    return result
