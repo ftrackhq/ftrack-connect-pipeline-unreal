@@ -127,7 +127,7 @@ def get_connected_objects_from_dcc_object(dcc_object_name):
     dcc_object_node = None
     ftrack_nodes = get_ftrack_nodes()
     for node in ftrack_nodes:
-        if node.endswith("{}.json".format(dcc_object_name))
+        if node.endswith("{}.json".format(dcc_object_name)):
             dcc_object_node = node
             break
     if not dcc_object_node:
@@ -136,7 +136,9 @@ def get_connected_objects_from_dcc_object(dcc_object_name):
         param_dict = json.load(openfile)
     id_value = param_dict.get(asset_const.ASSET_INFO_ID)
     for obj in get_current_scene_objects():
-        ftrack_value = unreal.EditorAssetLibrary.get_metadata_tag(obj, "ftrack")
+        ftrack_value = unreal.EditorAssetLibrary.get_metadata_tag(
+            obj, "ftrack"
+        )
         if id_value == ftrack_value:
             objects.append(obj)
     return objects
@@ -154,6 +156,7 @@ def get_all_sequences(as_names=True):
             result.append(seq.get_name() if as_names else seq)
             break
     return result
+
 
 ### SELECTION ###
 
@@ -209,7 +212,9 @@ def open_file(path, options=None):
 
 def import_file(asset_import_task):
     '''Native import file function using the object unreal.AssetImportTask() given as *asset_import_task*'''
-    unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([asset_import_task])
+    unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(
+        [asset_import_task]
+    )
     return asset_import_task.imported_object_paths[0]
 
 
@@ -507,4 +512,3 @@ def render(
     subprocess.call(' '.join(cmdline_args), env=envs)
 
     return output_filepath
-
