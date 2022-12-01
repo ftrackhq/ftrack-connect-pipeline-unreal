@@ -147,14 +147,15 @@ class UnrealDccObject(DccObject):
 
     def connect_objects(self, objects):
         '''
-        Link the given *objects* ftrack attribute to the self
+        Link the given *objects* (list/set of string paths) ftrack attribute to the self
         :obj:`name` object asset_link attribute in unreal.
 
         *objects* List of Unreal DAG objects
         '''
-        for obj in objects:
+        for object_path in objects:
+            object_ad = unreal_utils.get_asset_by_path(object_path)
             unreal.EditorAssetLibrary.set_metadata_tag(
-                obj, 'ftrack', str(self.get(asset_const.ASSET_INFO_ID))
+                object_ad, 'ftrack', str(self.get(asset_const.ASSET_INFO_ID))
             )
             # TODO: Try to use the ASSET Data full name here
-            self[asset_const.ASSET_LINK].append(obj)
+            self[asset_const.ASSET_LINK].append(object_path)

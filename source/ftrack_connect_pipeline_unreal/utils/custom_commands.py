@@ -71,7 +71,7 @@ def get_current_scene_objects():
     '''Returns all the objects in the scene'''
     # Return the list of all the assets found in the DirectoryPath.
     # https://docs.unrealengine.com/5.1/en-US/PythonAPI/class/EditorAssetLibrary.html?highlight=editorassetlibrary#unreal.EditorAssetLibrary
-    return unreal.EditorAssetLibrary.list_assets("/Game", recursive=True)
+    return set(unreal.EditorAssetLibrary.list_assets("/Game", recursive=True))
 
 
 def collect_children_nodes(node):
@@ -112,10 +112,17 @@ def node_exists(node_name):
     return False
 
 
-def get_node(node_name):
-    '''Return the Max node identified by name'''
-    # return rt.getNodeByName(node_name, exact=True)
-    pass
+def get_asset_by_path(asset_path):
+    '''Get Unreal asset object by path'''
+    if not asset_path:
+        return None
+    assetRegistry = unreal.AssetRegistryHelpers.get_asset_registry()
+    asset_data = assetRegistry.get_assets_by_package_name(
+        os.path.splitext(asset_path)[0]
+    )
+    if 0 < len(asset_data):
+        return asset_data[0].get_asset()
+    return None
 
 
 def delete_node(node_name):
