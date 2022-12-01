@@ -66,6 +66,14 @@ class UnrealDccObject(DccObject):
         # property needs the name
         self.name = name
 
+        if not os.path.exists(asset_const.FTRACK_ROOT_PATH):
+            self.logger.warning(
+                'Creating project ftrack folder: {}'.format(
+                    asset_const.FTRACK_ROOT_PATH
+                )
+            )
+            os.makedirs(asset_const.FTRACK_ROOT_PATH)
+
         # Create an empty json file in the unreal project ftrack root folder
         with open(self.ftrack_file_path, "w") as outfile:
             json.dump({}, outfile)
@@ -81,7 +89,7 @@ class UnrealDccObject(DccObject):
         ftrack_file_path = os.path.join(
             asset_const.FTRACK_ROOT_PATH, "{}.json".format(name)
         )
-        return unreal.Path.file_exists(ftrack_file_path)
+        return unreal.Paths.file_exists(ftrack_file_path)
 
     def from_asset_info_id(self, asset_info_id):
         '''
@@ -127,7 +135,7 @@ class UnrealDccObject(DccObject):
         ftrack_file_path = os.path.join(
             asset_const.FTRACK_ROOT_PATH, "{}.json".format(object_name)
         )
-        if not unreal.Path.file_exists(ftrack_file_path):
+        if not unreal.Paths.file_exists(ftrack_file_path):
             error_message = "{} Object doesn't exists".format(object_name)
             logger.error(error_message)
             return param_dict

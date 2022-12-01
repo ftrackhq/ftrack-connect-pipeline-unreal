@@ -27,8 +27,7 @@ def run_in_main_thread(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if threading.currentThread().name != 'MainThread':
-            # return maya_utils.executeInMainThreadWithResult(f, *args, **kwargs)
-            pass
+            return f(*args, **kwargs)
         else:
             return f(*args, **kwargs)
 
@@ -57,6 +56,8 @@ def get_main_window():
 
 def get_ftrack_nodes():
     ftrack_nodes = []
+    if not os.path.exists(asset_const.FTRACK_ROOT_PATH):
+        return ftrack_nodes
     content = os.listdir(asset_const.FTRACK_ROOT_PATH)
     for item_name in content:
         if item_name not in "ftrackdata":
@@ -103,9 +104,11 @@ def delete_all_children(node):
 
 def node_exists(node_name):
     '''Check if node_name exist in the project'''
-    content = os.listdir(asset_const.FTRACK_ROOT_PATH)
-    if node_name in content:
-        return True
+    for content in unreal.EditorAssetLibrary.list_assets(
+        "/Game", recursive=True
+    ):
+        if node_name in content:
+            return True
     return False
 
 
@@ -204,10 +207,10 @@ def select_only_type(obj_type):
 ### FILE OPERATIONS ###
 
 
-def get_asset_relative_path(self, asset_version_entity):
+def get_asset_relative_path(session, asset_version_entity):
     ftrack_task = asset_version_entity['task']
     # location.
-    links_for_task = self.session.query(
+    links_for_task = session.query(
         'select link from Task where id is "{}"'.format(ftrack_task['id'])
     ).first()['link']
     relative_path = ""
@@ -532,7 +535,7 @@ def render(
 #### MISC ####
 
 
-def rename_object_with_prefix(self, loaded_obj, prefix):
+def rename_object_with_prefix(loaded_obj, prefix):
     '''This method allow renaming a UObject to put a prefix to work along
     with UE4 naming convention.
       https://github.com/Allar/ue4-style-guide'''
