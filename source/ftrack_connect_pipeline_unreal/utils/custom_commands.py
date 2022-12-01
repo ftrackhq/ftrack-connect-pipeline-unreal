@@ -209,7 +209,8 @@ def open_file(path, options=None):
 
 def import_file(asset_import_task):
     '''Native import file function using the object unreal.AssetImportTask() given as *asset_import_task*'''
-    return unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([asset_import_task])
+    unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([asset_import_task])
+    return asset_import_task.imported_object_paths[0]
 
 
 def save_file(save_path, context_id=None, session=None, temp=True, save=True):
