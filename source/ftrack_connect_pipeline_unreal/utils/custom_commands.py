@@ -112,6 +112,17 @@ def node_exists(node_name):
     return False
 
 
+def ftrack_node_exists(dcc_object_name):
+    '''Check if ftrack node identified by *node_name* exist in the project'''
+    dcc_object_node = None
+    ftrack_nodes = get_ftrack_nodes()
+    for node in ftrack_nodes:
+        if node == dcc_object_name:
+            dcc_object_node = node
+            break
+    return dcc_object_node is not None
+
+
 def get_asset_by_path(asset_path):
     '''Get Unreal asset object by path'''
     if not asset_path:
@@ -130,6 +141,23 @@ def delete_node(node_name):
     unreal.EditorAssetLibrary.delete_asset(node_name)
 
 
+def delete_ftrack_node(dcc_object_name):
+    dcc_object_node = None
+    ftrack_nodes = get_ftrack_nodes()
+    for node in ftrack_nodes:
+        if node == dcc_object_name:
+            dcc_object_node = node
+            break
+    if not dcc_object_node:
+        return False
+    path_dcc_object_node = '{}{}{}.json'.format(
+        asset_const.FTRACK_ROOT_PATH, os.sep, dcc_object_node
+    )
+    if os.path.exists(path_dcc_object_node):
+        return os.remove(path_dcc_object_node)
+    return False
+
+
 def get_connected_nodes_from_dcc_object(dcc_object_name):
     '''Return all objects connected to the given *dcc_object_name*'''
     objects = []
@@ -141,10 +169,11 @@ def get_connected_nodes_from_dcc_object(dcc_object_name):
             break
     if not dcc_object_node:
         return
+    path_dcc_object_node = '{}{}{}.json'.format(
+        asset_const.FTRACK_ROOT_PATH, os.sep, dcc_object_node
+    )
     with open(
-        '{}{}{}.json'.format(
-            asset_const.FTRACK_ROOT_PATH, os.sep, dcc_object_node
-        ),
+        path_dcc_object_node,
         'r',
     ) as openfile:
         param_dict = json.load(openfile)
@@ -244,7 +273,11 @@ def import_file(asset_import_task):
     unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(
         [asset_import_task]
     )
-    return asset_import_task.imported_object_paths[0]
+    return (
+        asset_import_task.imported_object_paths[0]
+        if len(asset_import_task.imported_object_paths or []) > 0
+        else None
+    )
 
 
 def save_file(save_path, context_id=None, session=None, temp=True, save=True):
@@ -558,12 +591,12 @@ def rename_node_with_prefix(loaded_obj, prefix):
         )
         if object_ad:
             if unreal.EditorAssetLibrary.rename_asset(
-                object_ad.object_path,
-                str(object_ad.package_path)
-                + '/'
-                + prefix
-                + '_'
-                + str(object_ad.asset_name),
+                object_ad.package_path,
+                '{}/{}_{}'.format(
+                    str(object_ad.package_path),
+                    prefix,
+                    str(object_ad.asset_name),
+                ),
             ):
                 new_name_with_prefix = '{}_{}'.format(
                     prefix, object_ad.asset_name

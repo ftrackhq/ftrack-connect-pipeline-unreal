@@ -277,9 +277,6 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
             or []
         )
 
-        # Filter out the dcc object
-        nodes = list(filter(lambda x: x.name != self.dcc_object.name, nodes))
-
         for node in nodes:
             self.logger.debug("Removing object: {}".format(node))
             try:
@@ -309,9 +306,9 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
                 self._notify_client(plugin, result_data)
                 return status, result
 
-        if unreal_utils.node_exists(self.dcc_object.name):
+        if unreal_utils.ftrack_node_exists(self.dcc_object.name):
             try:
-                unreal_utils.delete_node(self.dcc_object.name)
+                unreal_utils.delete_ftrack_node(self.dcc_object.name)
                 result.append(str(self.dcc_object.name))
                 status = core_constants.SUCCESS_STATUS
             except Exception as error:
