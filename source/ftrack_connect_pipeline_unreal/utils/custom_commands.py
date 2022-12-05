@@ -120,7 +120,7 @@ def get_asset_by_path(asset_path):
     asset_data = assetRegistry.get_assets_by_package_name(
         os.path.splitext(asset_path)[0]
     )
-    if 0 < len(asset_data):
+    if asset_data:
         return asset_data[0].get_asset()
     return None
 
@@ -128,7 +128,6 @@ def get_asset_by_path(asset_path):
 def delete_node(node_name):
     '''Delete the given *node_name*'''
     unreal.EditorAssetLibrary.delete_asset(node_name)
-    pass
 
 
 def get_connected_objects_from_dcc_object(dcc_object_name):
@@ -145,12 +144,13 @@ def get_connected_objects_from_dcc_object(dcc_object_name):
     with open(dcc_object_node, 'r') as openfile:
         param_dict = json.load(openfile)
     id_value = param_dict.get(asset_const.ASSET_INFO_ID)
-    for obj in get_current_scene_objects():
+    for obj_path in get_current_scene_objects():
+        asset = get_asset_by_path(obj_path)
         ftrack_value = unreal.EditorAssetLibrary.get_metadata_tag(
-            obj, "ftrack"
+            asset, "ftrack"
         )
         if id_value == ftrack_value:
-            objects.append(obj)
+            objects.append(obj_path)
     return objects
 
 
@@ -213,7 +213,7 @@ def select_only_type(obj_type):
 
 ### FILE OPERATIONS ###
 
-
+# TODO: Find a better name for this fucntion. This is not a relative path.
 def get_asset_relative_path(session, asset_version_entity):
     ftrack_task = asset_version_entity['task']
     # location.

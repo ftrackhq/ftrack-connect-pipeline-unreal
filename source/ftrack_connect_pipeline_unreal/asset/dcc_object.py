@@ -157,5 +157,4 @@ class UnrealDccObject(DccObject):
             unreal.EditorAssetLibrary.set_metadata_tag(
                 object_ad, 'ftrack', str(self.get(asset_const.ASSET_INFO_ID))
             )
-            # TODO: Try to use the ASSET Data full name here
             self[asset_const.ASSET_LINK].append(object_path)
