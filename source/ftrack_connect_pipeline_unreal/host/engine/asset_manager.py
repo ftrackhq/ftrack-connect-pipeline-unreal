@@ -189,13 +189,11 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
         self.dcc_object = dcc_object
 
         nodes = (
-            unreal_utils.get_connected_objects_from_dcc_object(
+            unreal_utils.get_connected_nodes_from_dcc_object(
                 self.dcc_object.name
             )
             or []
         )
-        # Filter out the dcc object
-        nodes = list(filter(lambda x: x.name != self.dcc_object.name, nodes))
 
         for node in nodes:
             self.logger.debug("Removing object: {}".format(node))
@@ -273,7 +271,7 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
         self.dcc_object = dcc_object
 
         nodes = (
-            unreal_utils.get_connected_objects_from_dcc_object(
+            unreal_utils.get_connected_nodes_from_dcc_object(
                 self.dcc_object.name
             )
             or []

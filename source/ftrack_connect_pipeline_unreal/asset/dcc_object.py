@@ -46,7 +46,6 @@ class UnrealDccObject(DccObject):
         Sets the given *v* into the given *k* and automatically set the
         attributes of the current self :obj:`name` on the DCC
         '''
-
         super(UnrealDccObject, self).__setitem__(k, v)
         # As we are using a json file to handle the asset info, just dump the
         # self dictionary to the json file
@@ -157,4 +156,4 @@ class UnrealDccObject(DccObject):
             unreal.EditorAssetLibrary.set_metadata_tag(
                 object_ad, 'ftrack', str(self.get(asset_const.ASSET_INFO_ID))
             )
-            self[asset_const.ASSET_LINK].append(object_path)
+            # self[asset_const.ASSET_LINK].append(object_path)

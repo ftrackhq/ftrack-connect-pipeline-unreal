@@ -28,7 +28,8 @@ class UnrealQtAssemblerClientWidget(load.QtAssemblerClientWidget):
             event_manager,
             load_const.LOAD_MODES,
             asset_list_model,
+            multithreading_enabled=False,
         )
 
         # Make sure we stays on top of Unreal
-        self.setWindowFlags(QtCore.Qt.Tool)
+        self.setWindowFlags(QtCore.Qt.Window)

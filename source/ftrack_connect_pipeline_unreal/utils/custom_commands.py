@@ -60,11 +60,11 @@ def get_ftrack_nodes():
         return ftrack_nodes
     content = os.listdir(asset_const.FTRACK_ROOT_PATH)
     for item_name in content:
-        if item_name not in "ftrackdata":
+        if not "ftrackdata" in item_name:
             continue
         if item_name.endswith(".json"):
             ftrack_nodes.append(os.path.splitext(item_name)[0])
-    return ftrack_nodes
+    return ftrack_nodes  # str ["xxxx_ftrackdata_3642"] == list of node names
 
 
 def get_current_scene_objects():
@@ -130,18 +130,23 @@ def delete_node(node_name):
     unreal.EditorAssetLibrary.delete_asset(node_name)
 
 
-def get_connected_objects_from_dcc_object(dcc_object_name):
+def get_connected_nodes_from_dcc_object(dcc_object_name):
     '''Return all objects connected to the given *dcc_object_name*'''
     objects = []
     dcc_object_node = None
     ftrack_nodes = get_ftrack_nodes()
     for node in ftrack_nodes:
-        if node.endswith("{}.json".format(dcc_object_name)):
+        if node == dcc_object_name:
             dcc_object_node = node
             break
     if not dcc_object_node:
         return
-    with open(dcc_object_node, 'r') as openfile:
+    with open(
+        '{}{}{}.json'.format(
+            asset_const.FTRACK_ROOT_PATH, os.sep, dcc_object_node
+        ),
+        'r',
+    ) as openfile:
         param_dict = json.load(openfile)
     id_value = param_dict.get(asset_const.ASSET_INFO_ID)
     for obj_path in get_current_scene_objects():
@@ -213,9 +218,8 @@ def select_only_type(obj_type):
 
 ### FILE OPERATIONS ###
 
-# TODO: Find a better name for this fucntion. This is not a relative path.
-def get_asset_relative_path(session, asset_version_entity):
-    ftrack_task = asset_version_entity['task']
+# TODO: Find a better name for this function. This is not a relative path.
+def get_context_relative_path(session, ftrack_task):
     # location.
     links_for_task = session.query(
         'select link from Task where id is "{}"'.format(ftrack_task['id'])
@@ -542,7 +546,7 @@ def render(
 #### MISC ####
 
 
-def rename_object_with_prefix(loaded_obj, prefix):
+def rename_node_with_prefix(loaded_obj, prefix):
     '''This method allow renaming a UObject to put a prefix to work along
     with UE4 naming convention.
       https://github.com/Allar/ue4-style-guide'''
@@ -567,7 +571,7 @@ def rename_object_with_prefix(loaded_obj, prefix):
     return new_name_with_prefix
 
 
-def assets_to_paths(self, assets):
+def assets_to_paths(assets):
     result = []
     for asset in assets:
         result.append(asset.get_path_name())

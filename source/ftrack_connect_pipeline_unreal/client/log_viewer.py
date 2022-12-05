@@ -17,4 +17,4 @@ class UnrealQtLogViewerClientWidget(log_viewer.QtLogViewerClientWidget):
         super(UnrealQtLogViewerClientWidget, self).__init__(event_manager)
 
         # Make sure we stays on top of Unreal
-        self.setWindowFlags(QtCore.Qt.Tool)
+        self.setWindowFlags(QtCore.Qt.Window)

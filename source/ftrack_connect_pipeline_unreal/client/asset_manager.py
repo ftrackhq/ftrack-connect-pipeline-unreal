@@ -19,7 +19,10 @@ class UnrealQtAssetManagerClientWidget(QtAssetManagerClientWidget):
 
     def __init__(self, event_manager, asset_list_model, parent=None):
         super(UnrealQtAssetManagerClientWidget, self).__init__(
-            event_manager, asset_list_model, parent=parent
+            event_manager,
+            asset_list_model,
+            multithreading_enabled=False,
+            parent=parent,
         )
         self.setWindowTitle('Unreal Pipeline Asset Manager')
         self.resize(350, 800)
