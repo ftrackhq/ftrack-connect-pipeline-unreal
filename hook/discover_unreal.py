@@ -44,12 +44,14 @@ def on_launch_pipeline_unreal(session, event):
 
     pipeline_unreal_base_data['integration']['env'] = {
         'FTRACK_EVENT_PLUGIN_PATH.prepend': plugin_hook,
-        'PYTHONPATH.prepend': python_dependencies,
+        'PYTHONPATH.prepend': os.path.pathsep.join(
+            [python_dependencies, unreal_script_path]
+        ),
         'QT_PREFERRED_BINDING.set': 'PySide2',
     }
 
     # Verify that init script is installed centrally
-    unreal_editor_exe = event['data']['command'][0]
+    unreal_editor_exe = event['data']['application']['path']
     # 'C:\\Program Files\\Epic Games\\UE_5.1\\Engine\\Binaries\\Win64\\UnrealEditor.exe'
     engine_path = os.path.realpath(
         os.path.join(unreal_editor_exe, '..', '..', '..')
@@ -88,6 +90,7 @@ def on_launch_pipeline_unreal(session, event):
             )
         )
         try:
+            os.makedirs(os.path.dirname(script_destination), exist_ok=True)
             shutil.copy(script_source, script_destination)
             logger.info('Installed init script.')
             # Also copy icon
