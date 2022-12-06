@@ -199,7 +199,10 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
             self.logger.debug("Removing object: {}".format(node))
             try:
                 if unreal_utils.node_exists(node):
-                    unreal_utils.delete_node(node)
+                    if not unreal_utils.delete_node(node):
+                        raise Exception(
+                            'Unreal asset could not be deleted from library.'
+                        )
                     result.append(str(node))
                     status = core_constants.SUCCESS_STATUS
             except Exception as error:
@@ -281,7 +284,10 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
             self.logger.debug("Removing object: {}".format(node))
             try:
                 if unreal_utils.node_exists(node):
-                    unreal_utils.delete_node(node)
+                    if not unreal_utils.delete_node(node):
+                        raise Exception(
+                            'Unreal asset could not be deleted from library.'
+                        )
                     result.append(str(node))
                     status = core_constants.SUCCESS_STATUS
             except Exception as error:

@@ -26,10 +26,8 @@ def run_in_main_thread(f):
 
     @wraps(f)
     def decorated(*args, **kwargs):
-        if threading.currentThread().name != 'MainThread':
-            return f(*args, **kwargs)
-        else:
-            return f(*args, **kwargs)
+        # Multithreading is disabled for Unreal integration
+        return f(*args, **kwargs)
 
     return decorated
 
@@ -43,6 +41,7 @@ def init_unreal(context_id=None, session=None):
     :param session: The session required to query from *context_id*.
     :return:
     '''
+
     pass
 
 
@@ -138,7 +137,7 @@ def get_asset_by_path(asset_path):
 
 def delete_node(node_name):
     '''Delete the given *node_name*'''
-    unreal.EditorAssetLibrary.delete_asset(node_name)
+    return unreal.EditorAssetLibrary.delete_asset(node_name)
 
 
 def delete_ftrack_node(dcc_object_name):
@@ -579,6 +578,35 @@ def render(
 #### MISC ####
 
 
+def prepare_load_task(session, context_data, data):
+    '''Prepare loader import task'''
+
+    paths_to_import = []
+    for collector in data:
+        paths_to_import.extend(collector['result'])
+
+    component_path = paths_to_import[0]
+
+    task = unreal.AssetImportTask()
+
+    task.filename = component_path
+
+    asset_version_entity = session.query(
+        'AssetVersion where id={}'.format(context_data['version_id'])
+    ).first()
+    import_path = '/Game/{}{}'.format(
+        get_context_relative_path(session, asset_version_entity['task']),
+        context_data['asset_name'],
+    )
+
+    task.destination_path = import_path.replace(' ', '_')
+    task.destination_name = os.path.splitext(os.path.basename(component_path))[
+        0
+    ]
+
+    return task, component_path
+
+
 def rename_node_with_prefix(loaded_obj, prefix):
     '''This method allow renaming a UObject to put a prefix to work along
     with UE4 naming convention.
@@ -591,7 +619,7 @@ def rename_node_with_prefix(loaded_obj, prefix):
         )
         if object_ad:
             if unreal.EditorAssetLibrary.rename_asset(
-                object_ad.package_path,
+                loaded_obj.get_path_name(),
                 '{}/{}_{}'.format(
                     str(object_ad.package_path),
                     prefix,

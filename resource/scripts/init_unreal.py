@@ -11,11 +11,6 @@ import os
 import logging
 import functools
 
-# Make sure framework is found, Unreal Python interpreter is not preloaded from PYTHONPATH
-for p in os.environ['PYTHONPATH'].split(os.pathsep):
-    print('[ftrack] Adding to sys path: "{}"\n'.format(p))
-    sys.path.append(p)
-
 do_load_integration = True
 
 if (
@@ -24,6 +19,25 @@ if (
 ):
     print('Not loading ftrack integration during sequence render.')
     do_load_integration = False
+
+if do_load_integration:
+    # Make sure framework is found, Unreal Python interpreter is not preloaded from PYTHONPATH
+    if not 'PYTHONPATH' in os.environ:
+        do_load_integration = False
+    else:
+        # Check if our integration is in present
+        has_unreal_integration = False
+        for p in os.environ['PYTHONPATH'].split(os.pathsep):
+            if 'ftrack-connect-pipeline-unreal' in p:
+                has_unreal_integration = True
+                break
+        if not has_unreal_integration:
+            do_load_integration = False
+
+if do_load_integration:
+    for p in os.environ['PYTHONPATH'].split(os.pathsep):
+        print('[ftrack] Adding to sys path: "{}"\n'.format(p))
+        sys.path.append(p)
 
 
 def load_integration():
