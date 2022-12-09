@@ -123,13 +123,13 @@ def ftrack_node_exists(dcc_object_name):
     return dcc_object_node is not None
 
 
-def get_asset_by_path(asset_path):
+def get_asset_by_path(node_name):
     '''Get Unreal asset object by path'''
-    if not asset_path:
+    if not node_name:
         return None
     assetRegistry = unreal.AssetRegistryHelpers.get_asset_registry()
     asset_data = assetRegistry.get_assets_by_package_name(
-        os.path.splitext(asset_path)[0]
+        os.path.splitext(node_name)[0]
     )
     if asset_data:
         return asset_data[0].get_asset()
