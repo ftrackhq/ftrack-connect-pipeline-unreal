@@ -135,6 +135,14 @@ def get_asset_by_path(node_name):
     return None
 
 
+def get_asset_by_class(class_name):
+    return [
+        asset
+        for asset in unreal.AssetRegistryHelpers.get_asset_registry().get_all_assets()
+        if asset.get_class().get_name() == class_name
+    ]
+
+
 def delete_node(node_name):
     '''Delete the given *node_name*'''
     return unreal.EditorAssetLibrary.delete_asset(node_name)
@@ -189,7 +197,7 @@ def get_connected_nodes_from_dcc_object(dcc_object_name):
 
 def get_all_sequences(as_names=True):
     '''
-    Returns a list of of all sequences names
+    Returns a list of all sequences names
     '''
     result = []
     actors = unreal.EditorLevelLibrary.get_all_level_actors()
@@ -578,7 +586,7 @@ def render(
 #### MISC ####
 
 
-def prepare_load_task(session, context_data, data):
+def prepare_load_task(session, context_data, data, options):
     '''Prepare loader import task'''
 
     paths_to_import = []
@@ -604,32 +612,29 @@ def prepare_load_task(session, context_data, data):
         0
     ]
 
+    task.replace_existing = options.get('ReplaceExisting', True)
+    task.automated = options.get('Automated', True)
+    task.save = options.get('Save', True)
+
     return task, component_path
 
 
-def rename_node_with_prefix(loaded_obj, prefix):
+def rename_node_with_prefix(node_name, prefix):
     '''This method allow renaming a UObject to put a prefix to work along
     with UE4 naming convention.
       https://github.com/Allar/ue4-style-guide'''
-    assert loaded_obj != None
-    new_name_with_prefix = ''
-    if loaded_obj:
-        object_ad = unreal.EditorAssetLibrary.find_asset_data(
-            loaded_obj.get_path_name()
-        )
-        if object_ad:
-            if unreal.EditorAssetLibrary.rename_asset(
-                loaded_obj.get_path_name(),
-                '{}/{}_{}'.format(
-                    str(object_ad.package_path),
-                    prefix,
-                    str(object_ad.asset_name),
-                ),
-            ):
-                new_name_with_prefix = '{}_{}'.format(
-                    prefix, object_ad.asset_name
-                )
-    return new_name_with_prefix
+    assert node_name is not None, 'No node name/asset path provided'
+    object_ad = unreal.EditorAssetLibrary.find_asset_data(node_name)
+    new_name_with_prefix = '{}/{}{}'.format(
+        str(object_ad.package_path),
+        prefix,
+        str(object_ad.asset_name),
+    )
+
+    if unreal.EditorAssetLibrary.rename_asset(node_name, new_name_with_prefix):
+        return new_name_with_prefix
+    else:
+        return node_name
 
 
 def assets_to_paths(assets):
