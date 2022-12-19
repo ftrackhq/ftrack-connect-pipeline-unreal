@@ -93,8 +93,6 @@ def load_integration():
 
     created_widgets = dict()
 
-    host = None
-
     def get_ftrack_menu(menu_name='ftrack', submenu_name=None):
         '''Get the current ftrack menu, create it if does not exists.'''
         menus = unreal.ToolMenus.get()
@@ -275,6 +273,8 @@ def load_integration():
         # QtCore.QCoreApplication.instance().installEventFilter(EventFilterWidget())
 
         unreal_utils.init_unreal()
+
+        unreal_utils.save_project_state(['/Game'])
 
     initialise()
 

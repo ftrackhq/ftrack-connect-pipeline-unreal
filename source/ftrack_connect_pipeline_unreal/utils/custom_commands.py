@@ -45,6 +45,48 @@ def init_unreal(context_id=None, session=None):
     pass
 
 
+def save_project_state(package_paths):
+    '''
+    Takes a snapshot of the given *package_paths* status recursively..
+
+    package_paths: Root folder from where to take the snapshot
+    '''
+
+    asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
+    registry_filter = unreal.ARFilter(
+        package_paths=package_paths, recursive_paths=True
+    )
+    cb_assets_data = asset_registry.get_assets(registry_filter)
+
+    os_content_folder = unreal.SystemLibrary.get_project_content_directory()
+    state_dictionary = {"assets": []}
+    for asset_data in cb_assets_data:
+        # TODO: Remove /Game/ from the path the correct way
+        if not asset_data.is_u_asset():
+            continue
+        full_path = None
+        for ext in ['.uasset', '.umap']:
+            p = os.path.join(
+                os_content_folder,
+                '{}{}'.format(str(asset_data.package_name)[6:], ext),
+            )
+            if os.path.exists(p):
+                full_path = p
+        if not full_path:
+            continue
+        disk_size = os.path.getsize(full_path)
+        mod_date = os.path.getmtime(full_path)
+        info = {
+            'package_name': str(asset_data.package_name),
+            'disk_size': disk_size,
+            'modified_date': mod_date,
+        }
+        state_dictionary['assets'].append(info)
+
+    # TODO: Save it in /Saved/ftrack/projectstate.json
+    return state_dictionary
+
+
 def get_main_window():
     """Return the QMainWindow for the main Unreal window."""
     return None
