@@ -7,6 +7,7 @@ import logging
 import sys
 import subprocess
 import json
+import datetime
 
 import unreal
 
@@ -43,48 +44,6 @@ def init_unreal(context_id=None, session=None):
     '''
 
     pass
-
-
-def save_project_state(package_paths):
-    '''
-    Takes a snapshot of the given *package_paths* status recursively..
-
-    package_paths: Root folder from where to take the snapshot
-    '''
-
-    asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
-    registry_filter = unreal.ARFilter(
-        package_paths=package_paths, recursive_paths=True
-    )
-    cb_assets_data = asset_registry.get_assets(registry_filter)
-
-    os_content_folder = unreal.SystemLibrary.get_project_content_directory()
-    state_dictionary = {"assets": []}
-    for asset_data in cb_assets_data:
-        # TODO: Remove /Game/ from the path the correct way
-        if not asset_data.is_u_asset():
-            continue
-        full_path = None
-        for ext in ['.uasset', '.umap']:
-            p = os.path.join(
-                os_content_folder,
-                '{}{}'.format(str(asset_data.package_name)[6:], ext),
-            )
-            if os.path.exists(p):
-                full_path = p
-        if not full_path:
-            continue
-        disk_size = os.path.getsize(full_path)
-        mod_date = os.path.getmtime(full_path)
-        info = {
-            'package_name': str(asset_data.package_name),
-            'disk_size': disk_size,
-            'modified_date': mod_date,
-        }
-        state_dictionary['assets'].append(info)
-
-    # TODO: Save it in /Saved/ftrack/projectstate.json
-    return state_dictionary
 
 
 def get_main_window():
@@ -413,6 +372,215 @@ def update_reference_path(reference_node, component_path):
     *component_path*'''
     # reference_node.filename = component_path
     pass
+
+
+#### PROJECT LEVEL PUBLISH AND LOAD ####
+
+
+def save_project_state(package_paths, include_paths=None):
+    '''
+    Takes a snapshot of the given *package_paths* status recursively, with the
+    purpose os later identify which packages have been modified - i.e. are dirty
+    and needs to be published.
+
+    If *include_paths* is given, only these assets will be updated, merging the result
+    with the current project state for all other assets - keeping them dirty.
+
+    package_paths: Root folder from where to take the snapshot
+    '''
+
+    asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
+    registry_filter = unreal.ARFilter(
+        package_paths=package_paths, recursive_paths=True
+    )
+    cb_assets_data = asset_registry.get_assets(registry_filter)
+
+    os_content_folder = unreal.SystemLibrary.get_project_content_directory()
+    state_dictionary = {
+        "assets": [],
+        "date": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "description": "Saved state of the Unreal project content folder",
+    }
+    for asset_data in cb_assets_data:
+        if not asset_data.is_u_asset():
+            continue
+        full_path = None
+        for ext in ['.uasset', '.umap']:
+            # TODO: Remove /Game/ from the path the correct way
+            p = os.path.join(
+                os_content_folder,
+                '{}{}'.format(str(asset_data.package_name)[6:], ext),
+            )
+            if os.path.exists(p):
+                full_path = p
+        if not full_path:
+            continue
+        disk_size = os.path.getsize(full_path)
+        mod_date = os.path.getmtime(full_path)
+        info = {
+            'package_name': str(asset_data.package_name),
+            'disk_size': disk_size,
+            'modified_date': mod_date,
+        }
+        state_dictionary['assets'].append(info)
+
+    if not os.path.exists(asset_const.FTRACK_ROOT_PATH):
+        logger.info(
+            'Creating FTRACK_ROOT_PATH: {}'.format(
+                asset_const.FTRACK_ROOT_PATH
+            )
+        )
+        os.makedirs(asset_const.FTRACK_ROOT_PATH)
+
+    state_path = os.path.join(asset_const.FTRACK_ROOT_PATH, 'state.json')
+    with open(state_path, 'w') as f:
+        json.dump(state_dictionary, f, indent=4)
+        logger.debug(
+            'Successfully saved Unreal project state to: {}'.format(state_path)
+        )
+    return state_dictionary
+
+
+def get_project_state():
+    state_path = os.path.join(asset_const.FTRACK_ROOT_PATH, 'state.json')
+    if not os.path.exists(state_path):
+        return None
+    return json.load(open(state_path, 'r'))['assets']
+
+
+def get_project_level_context():
+    '''Read and return the project context from the current Unreal project.'''
+    context_path = os.path.join(asset_const.FTRACK_ROOT_PATH, 'context.json')
+    if not os.path.exists(context_path):
+        return None
+    return json.load(open(context_path, 'r'))['context_id']
+
+
+def set_project_level_context(context_id):
+    '''Read and return the project context from the current Unreal project.'''
+    context_path = os.path.join(asset_const.FTRACK_ROOT_PATH, 'context.json')
+    if not os.path.exists(asset_const.FTRACK_ROOT_PATH):
+        logger.info(
+            'Creating FTRACK_ROOT_PATH: {}'.format(
+                asset_const.FTRACK_ROOT_PATH
+            )
+        )
+        os.makedirs(asset_const.FTRACK_ROOT_PATH)
+    context_dictionary = {
+        "context_id": context_id,
+        "date": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "description": "The ftrack project level context id, bound to the Unreal project.",
+    }
+    with open(context_path, 'w') as f:
+        json.dump(context_dictionary, f)
+        logger.debug(
+            'Successfully saved Unreal project context to: {}'.format(
+                context_path
+            )
+        )
+
+
+def ensure_project_level_asset_build(
+    project_level_context_id, asset_path, session
+):
+    '''Ensure that an asset build exists on the *asset_path* relative *project_level_context_id*
+
+    Expect: /Game/FirstPerson/Maps/FirstPersonMap
+    '''
+
+    asset_path_sanitized = asset_path.replace('/Game', 'Content')
+    parent_context = session.query(
+        'Context where id is "{}"'.format(project_level_context_id)
+    ).one()
+    project = session.query(
+        'Project where id="{}"'.format(parent_context['project_id'])
+    ).one()
+
+    parts = asset_path_sanitized.split('/')
+
+    for index, part in enumerate(parts):
+        # Check if the context already exists
+        child_context = session.query(
+            'select id,name from Context where parent.id is "{0}" and name="{1}"'.format(
+                parent_context['id'], part
+            )
+        ).first()
+        if not child_context:
+            # Create it
+            if index < len(parts) - 1:
+                # Create a folder
+                child_context = session.create(
+                    'Folder',
+                    {
+                        'name': part,
+                        'parent': parent_context,
+                    },
+                )
+                session.commit()
+                logger.info(
+                    'Created Unreal project level folder: {}'.format(
+                        child_context['name']
+                    )
+                )
+            else:
+                # Find out possible asset build types
+                objecttype_assetbuild = session.query(
+                    'ObjectType where name="{}"'.format('Asset Build')
+                ).one()
+                schema = session.query(
+                    'Schema where project_schema_id="{0}" and object_type_id="{1}"'.format(
+                        project['project_schema_id'],
+                        objecttype_assetbuild['id'],
+                    )
+                ).one()
+                preferred_assetbuild_type = assetbuild_type = None
+                for typ in session.query(
+                    'SchemaType where schema_id="{0}"'.format(schema['id'])
+                ).all():
+                    assetbuild_type = session.query(
+                        'Type where id="{0}"'.format(typ['type_id'])
+                    ).first()
+                    if assetbuild_type['name'] == 'Prop':
+                        preferred_assetbuild_type = assetbuild_type
+                        break
+                if not assetbuild_type:
+                    raise Exception(
+                        'Could not find a asset build type to be used when creating the Unreal project level asset build!'
+                    )
+                preferred_assetbuild_status = assetbuild_status = None
+                for st in session.query(
+                    'SchemaStatus where schema_id="{0}"'.format(schema['id'])
+                ).all():
+                    assetbuild_status = session.query(
+                        'Status where id="{0}"'.format(st['status_id'])
+                    ).first()
+                    if assetbuild_status['name'] == 'Completed':
+                        preferred_assetbuild_status = assetbuild_status
+                        break
+                if not assetbuild_status:
+                    raise Exception(
+                        'Could not find a asset build status to be used when creating the Unreal project level asset build!'
+                    )
+                # Create an asset build
+                child_context = session.create(
+                    'AssetBuild',
+                    {
+                        'name': part,
+                        'parent': parent_context,
+                        'type': preferred_assetbuild_type or assetbuild_type,
+                        'status': preferred_assetbuild_status
+                        or assetbuild_status,
+                    },
+                )
+                session.commit()
+                logger.info(
+                    'Created Unreal project level asset build: {}'.format(
+                        child_context['name']
+                    )
+                )
+
+        parent_context = child_context
+    return parent_context
 
 
 ### TIME OPERATIONS ###

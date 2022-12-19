@@ -274,7 +274,9 @@ def load_integration():
 
         unreal_utils.init_unreal()
 
-        unreal_utils.save_project_state(['/Game'])
+        if unreal_utils.get_project_state() is None:
+            # A new project, so create the project state
+            unreal_utils.save_project_state(['/Game'])
 
     initialise()
 
