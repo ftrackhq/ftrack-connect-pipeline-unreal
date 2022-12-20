@@ -432,7 +432,9 @@ def save_project_state(package_paths, include_paths=None):
         )
         os.makedirs(asset_const.FTRACK_ROOT_PATH)
 
-    state_path = os.path.join(asset_const.FTRACK_ROOT_PATH, 'state.json')
+    state_path = os.path.join(
+        asset_const.FTRACK_ROOT_PATH, asset_const.PROJECT_STATE_FILE_NAME
+    )
     with open(state_path, 'w') as f:
         json.dump(state_dictionary, f, indent=4)
         logger.debug(
@@ -442,23 +444,31 @@ def save_project_state(package_paths, include_paths=None):
 
 
 def get_project_state():
-    state_path = os.path.join(asset_const.FTRACK_ROOT_PATH, 'state.json')
+    state_path = os.path.join(
+        asset_const.FTRACK_ROOT_PATH, asset_const.PROJECT_STATE_FILE_NAME
+    )
     if not os.path.exists(state_path):
         return None
     return json.load(open(state_path, 'r'))['assets']
 
 
-def get_project_level_context():
+def get_project_context_id():
     '''Read and return the project context from the current Unreal project.'''
-    context_path = os.path.join(asset_const.FTRACK_ROOT_PATH, 'context.json')
+    context_path = os.path.join(
+        asset_const.FTRACK_ROOT_PATH,
+        asset_const.PROJECT_CONTEXT_STORE_FILE_NAME,
+    )
     if not os.path.exists(context_path):
         return None
     return json.load(open(context_path, 'r'))['context_id']
 
 
-def set_project_level_context(context_id):
+def set_project_context(context_id):
     '''Read and return the project context from the current Unreal project.'''
-    context_path = os.path.join(asset_const.FTRACK_ROOT_PATH, 'context.json')
+    context_path = os.path.join(
+        asset_const.FTRACK_ROOT_PATH,
+        asset_const.PROJECT_CONTEXT_STORE_FILE_NAME,
+    )
     if not os.path.exists(asset_const.FTRACK_ROOT_PATH):
         logger.info(
             'Creating FTRACK_ROOT_PATH: {}'.format(
@@ -480,17 +490,15 @@ def set_project_level_context(context_id):
         )
 
 
-def ensure_project_level_asset_build(
-    project_level_context_id, asset_path, session
-):
-    '''Ensure that an asset build exists on the *asset_path* relative *project_level_context_id*
+def ensure_asset_build(project_context_id, asset_path, session):
+    '''Ensure that an asset build exists on the *asset_path* relative *project_context_id*
 
     Expect: /Game/FirstPerson/Maps/FirstPersonMap
     '''
 
     asset_path_sanitized = asset_path.replace('/Game', 'Content')
     parent_context = session.query(
-        'Context where id is "{}"'.format(project_level_context_id)
+        'Context where id is "{}"'.format(project_context_id)
     ).one()
     project = session.query(
         'Project where id="{}"'.format(parent_context['project_id'])
