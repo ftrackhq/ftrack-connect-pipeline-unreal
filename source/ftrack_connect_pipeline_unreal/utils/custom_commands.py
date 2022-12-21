@@ -186,14 +186,38 @@ def get_connected_nodes_from_dcc_object(dcc_object_name):
     ) as openfile:
         param_dict = json.load(openfile)
     id_value = param_dict.get(asset_const.ASSET_INFO_ID)
-    for obj_path in get_current_scene_objects():
-        asset = get_asset_by_path(obj_path)
+    for node_name in get_current_scene_objects():
+        asset = get_asset_by_path(node_name)
         ftrack_value = unreal.EditorAssetLibrary.get_metadata_tag(
             asset, "ftrack"
         )
         if id_value == ftrack_value:
-            objects.append(obj_path)
+            objects.append(node_name)
     return objects
+
+
+def get_asset_info(node_name):
+    '''Return the asset info from dcc object linked to asset path identified by *node_name*'''
+    asset = get_asset_by_path(node_name)
+    if asset is None:
+        logger.warning(
+            '(get_asset_info) Cannot find asset by path: {}'.format(node_name)
+        )
+        return None, None
+    ftrack_value = unreal.EditorAssetLibrary.get_metadata_tag(asset, "ftrack")
+    for dcc_object_node in get_ftrack_nodes():
+        path_dcc_object_node = '{}{}{}.json'.format(
+            asset_const.FTRACK_ROOT_PATH, os.sep, dcc_object_node
+        )
+        with open(
+            path_dcc_object_node,
+            'r',
+        ) as openfile:
+            param_dict = json.load(openfile)
+        id_value = param_dict.get(asset_const.ASSET_INFO_ID)
+        if id_value == ftrack_value:
+            return dcc_object_node, param_dict
+    return None, None
 
 
 def get_all_sequences(as_names=True):
