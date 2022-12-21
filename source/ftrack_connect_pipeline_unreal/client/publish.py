@@ -25,7 +25,7 @@ from ftrack_connect_pipeline_unreal.utils import (
 
 class UnrealQtPublisherClientWidget(QtPublisherClientWidget):
     ui_types = [
-        constants.UI_TYPE,
+        core_constants.UI_TYPE,
         qt_constants.UI_TYPE,
         unreal_constants.UI_TYPE,
     ]
@@ -152,7 +152,7 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
                             ):
                                 if not 'options' in plugin:
                                     plugin['options'] = {}
-                                # Store contexst data
+                                # Store context data
                                 plugin['options'][
                                     'parent_context_id'
                                 ] = asset_build['id']
