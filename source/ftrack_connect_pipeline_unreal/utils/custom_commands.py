@@ -514,15 +514,15 @@ def set_root_context_id(context_id):
         )
 
 
-def ensure_asset_build(project_context_id, asset_path, session):
-    '''Ensure that an asset build exists on the *asset_path* relative *project_context_id*
+def ensure_asset_build(root_context_id, asset_path, session):
+    '''Ensure that an asset build exists on the *asset_path* relative *root_context_id*
 
     Expect: /Game/FirstPerson/Maps/FirstPersonMap
     '''
 
     asset_path_sanitized = asset_path.replace('/Game', 'Content')
     parent_context = session.query(
-        'Context where id is "{}"'.format(project_context_id)
+        'Context where id is "{}"'.format(root_context_id)
     ).one()
     project = session.query(
         'Project where id="{}"'.format(parent_context['project_id'])
