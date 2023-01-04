@@ -476,7 +476,7 @@ def get_project_state():
     return json.load(open(state_path, 'r'))['assets']
 
 
-def get_project_context_id():
+def get_root_context_id():
     '''Read and return the project context from the current Unreal project.'''
     context_path = os.path.join(
         asset_const.FTRACK_ROOT_PATH,
@@ -487,7 +487,7 @@ def get_project_context_id():
     return json.load(open(context_path, 'r'))['context_id']
 
 
-def set_project_context(context_id):
+def set_root_context_id(context_id):
     '''Read and return the project context from the current Unreal project.'''
     context_path = os.path.join(
         asset_const.FTRACK_ROOT_PATH,
