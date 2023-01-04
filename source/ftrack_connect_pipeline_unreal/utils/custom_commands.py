@@ -476,7 +476,7 @@ def get_project_state():
     return json.load(open(state_path, 'r'))['assets']
 
 
-def get_project_context_id():
+def get_root_context_id():
     '''Read and return the project context from the current Unreal project.'''
     context_path = os.path.join(
         asset_const.FTRACK_ROOT_PATH,
@@ -487,7 +487,7 @@ def get_project_context_id():
     return json.load(open(context_path, 'r'))['context_id']
 
 
-def set_project_context(context_id):
+def set_root_context_id(context_id):
     '''Read and return the project context from the current Unreal project.'''
     context_path = os.path.join(
         asset_const.FTRACK_ROOT_PATH,
@@ -514,15 +514,15 @@ def set_project_context(context_id):
         )
 
 
-def ensure_asset_build(project_context_id, asset_path, session):
-    '''Ensure that an asset build exists on the *asset_path* relative *project_context_id*
+def ensure_asset_build(root_context_id, asset_path, session):
+    '''Ensure that an asset build exists on the *asset_path* relative *root_context_id*
 
     Expect: /Game/FirstPerson/Maps/FirstPersonMap
     '''
 
     asset_path_sanitized = asset_path.replace('/Game', 'Content')
     parent_context = session.query(
-        'Context where id is "{}"'.format(project_context_id)
+        'Context where id is "{}"'.format(root_context_id)
     ).one()
     project = session.query(
         'Project where id="{}"'.format(parent_context['project_id'])
