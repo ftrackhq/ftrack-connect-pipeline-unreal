@@ -154,10 +154,17 @@ def load_integration():
                         event_manager,
                         event['data']['pipeline'].get('assets')
                         or [
-                            "C:\\Users\\Henrik Norin\\Documents\\Unreal Projects\\MyProject\\Content\\StarterContent\\Blueprints\\Blueprint_Effect_Fire.uasset"
+                            "/Game/StarterContent/Blueprints/Blueprint_Effect_Fire.uasset"
                         ],
+                        parent_asset_version_id=event['data']['pipeline'].get(
+                            'parent_asset_version_id'
+                        )
+                        or 'f5139a97-a016-46d1-896c-3719376fb3ba',
                         title=event['data']['pipeline'].get('title'),
-                        run=event['data']['pipeline'].get('run'),
+                        immediate_run=event['data']['pipeline'].get(
+                            'interactive'
+                        )
+                        is False,
                     )
                 else:
                     # Create without asset model
@@ -229,7 +236,7 @@ def load_integration():
             (
                 core_constants.BATCH_PUBLISHER,
                 publish.UnrealQtBatchPublisherClientWidget,
-                'Batch publisher',
+                'Asset publisher',
                 '',
                 True,
             )

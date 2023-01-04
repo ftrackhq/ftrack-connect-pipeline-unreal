@@ -615,6 +615,47 @@ def ensure_asset_build(project_context_id, asset_path, session):
     return parent_context
 
 
+def get_asset_dependencies(asset_path):
+    '''Return a list of asset dependencies for the given *asset_path*.'''
+
+    # https://docs.unrealengine.com/4.27/en-US/PythonAPI/class/AssetRegistry.html?highlight=assetregistry#unreal.AssetRegistry.get_dependencies
+    # Setup dependency options
+    dep_options = unreal.AssetRegistryDependencyOptions(
+        include_soft_package_references=True,
+        include_hard_package_references=True,
+        include_searchable_names=False,
+        include_soft_management_references=True,
+        include_hard_management_references=True,
+    )
+    # Start asset registry
+    asset_reg = unreal.AssetRegistryHelpers.get_asset_registry()
+    # Get dependencies for the given asset
+    dependencies = [
+        str(dep)
+        for dep in asset_reg.get_dependencies(
+            asset_path.split('.')[0], dep_options
+        )
+    ]
+
+    # Filter out only dependencies that are in Game
+    game_dependencies = list(
+        filter(lambda x: x.startswith("/Game"), dependencies)
+    )
+
+    return game_dependencies
+
+
+def determine_extension(path):
+    '''Probe the file extension of the given asset path.'''
+    for ext in ['', '.uasset', '.umap']:
+        result = '{}{}'.format(path, ext)
+        if os.path.exists(result):
+            return result
+    raise Exception(
+        'Could not determine asset "{}" files extension on disk!'.format(path)
+    )
+
+
 ### TIME OPERATIONS ###
 
 
