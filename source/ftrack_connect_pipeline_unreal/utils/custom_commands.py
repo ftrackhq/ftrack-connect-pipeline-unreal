@@ -480,7 +480,7 @@ def get_root_context_id():
     '''Read and return the project context from the current Unreal project.'''
     context_path = os.path.join(
         asset_const.FTRACK_ROOT_PATH,
-        asset_const.PROJECT_CONTEXT_STORE_FILE_NAME,
+        asset_const.ROOT_CONTEXT_STORE_FILE_NAME,
     )
     if not os.path.exists(context_path):
         return None
@@ -491,7 +491,7 @@ def set_root_context_id(context_id):
     '''Read and return the project context from the current Unreal project.'''
     context_path = os.path.join(
         asset_const.FTRACK_ROOT_PATH,
-        asset_const.PROJECT_CONTEXT_STORE_FILE_NAME,
+        asset_const.ROOT_CONTEXT_STORE_FILE_NAME,
     )
     if not os.path.exists(asset_const.FTRACK_ROOT_PATH):
         logger.info(
