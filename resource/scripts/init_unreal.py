@@ -149,12 +149,13 @@ def load_integration():
                     # Create with asset model
                     widget = ftrack_client(event_manager, asset_list_model)
                 elif widget_name == core_constants.BATCH_PUBLISHER:
-                    # TODO: Remove test data
+                    # TODO: Remove test/mock data
                     widget = ftrack_client(
                         event_manager,
                         event['data']['pipeline'].get('assets')
                         or [
-                            "/Game/StarterContent/Blueprints/Blueprint_Effect_Fire.uasset"
+                            "/Game/StarterContent/Blueprints/Blueprint_Effect_Fire",
+                            "/Game/StarterContent/Props/SM_TableRound",
                         ],
                         parent_asset_version_id=event['data']['pipeline'].get(
                             'parent_asset_version_id'
@@ -236,7 +237,7 @@ def load_integration():
             (
                 core_constants.BATCH_PUBLISHER,
                 publish.UnrealQtBatchPublisherClientWidget,
-                'Asset publisher',
+                'Batch publisher',
                 '',
                 True,
             )

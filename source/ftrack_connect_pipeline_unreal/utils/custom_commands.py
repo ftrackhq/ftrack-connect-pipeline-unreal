@@ -925,3 +925,8 @@ def assets_to_paths(assets):
     for asset in assets:
         result.append(asset.get_path_name())
     return result
+
+
+def disk_log(s):
+    with open('C:\\TEMP\\unreal_log.txt', 'a') as f:
+        f.write('[{}] {}\n'.format(datetime.datetime.now(), s))

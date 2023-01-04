@@ -3,6 +3,7 @@
 import copy
 import os
 from functools import partial
+import sys
 
 import unreal
 
@@ -70,10 +71,10 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
         immediate_run=False,
         parent=None,
     ):
-        self._assets = assets
         self._parent_asset_version_id = parent_asset_version_id
         super(UnrealQtBatchPublisherClientWidget, self).__init__(
             event_manager,
+            assets,
             title=title,
             immediate_run=immediate_run,
             parent=parent,
@@ -86,17 +87,63 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
         )
 
     def _build_batch_publisher_widget(self):
-        return UnrealBatchPublisherWidget(self)
+        return UnrealBatchPublisherWidget(self, self.items)
 
-    def _get_list_widget_class(self):
-        return UnrealAssetListWidget
 
-    def _build_items(self, definition):
-        '''Build list of items (assets) to publish, exclude assets that have not changed
-        since last publish'''
-        self.batch_publisher_widget.warn_missing_definition_label.setVisible(
-            False
+class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
+    @property
+    def assets(self):
+        return self.items
+
+    def build(self):
+        '''(Override) Build the widget, add project context selector'''
+        self.warn_missing_definition_label = QtWidgets.QLabel()
+        self.layout().addWidget(self.warn_missing_definition_label)
+        self._project_context_selector = None
+        if self.level == 0:
+            self.warn_missing_definition_label.setText(
+                '<html><i>Could not locate asset publisher definition, please check configuration!</i></html>'
+            )
+            self.project_context_label = QtWidgets.QLabel('Project Context:')
+            self.project_context_label.setObjectName('gray')
+            self.layout().addWidget(self.project_context_label)
+            self._project_context_selector = context_selector.ContextSelector(
+                self.session, enble_context_change=True, select_task=False
+            )
+            self.layout().addWidget(self._project_context_selector)
+            self.layout().addWidget(line.Line(style='solid'))
+        super(UnrealBatchPublisherWidget, self).build()
+
+    def post_build(self):
+        super(UnrealBatchPublisherWidget, self).post_build()
+        if self._project_context_selector:
+            self._project_context_selector.entityChanged.connect(
+                self.on_project_context_changed
+            )
+
+    def on_context_changed(self, context_id):
+        '''(Override)Handle context change, propose default project context and populate project context selector'''
+        if not self._project_context_selector:
+            return
+        context = self.session.query(
+            'Context where id is "{}"'.format(context_id)
+        ).one()
+        default_project_context_id = context.get('project_id')
+        self._project_context_selector.browse_context_id = (
+            default_project_context_id
         )
+        project_context_id = unreal_utils.get_project_context_id()
+        self._project_context_selector.context_id = project_context_id
+        self.update_items(self._project_context_selector.context_id)
+
+    def on_project_context_changed(self, context):
+        '''Handle context change - store it with current Unreal project'''
+        unreal_utils.set_project_context(context['id'])
+        self.update_items(self._project_context_selector.context_id)
+
+    def build_items(self, definition):
+        '''Build list of items (assets) to publish based on selected *definition*'''
+        self.warn_missing_definition_label.setVisible(False)
         result = []
         unrecognizeable_assets = []
 
@@ -106,10 +153,12 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
             )
         )
 
-        for asset_path in sorted(self._assets):
-            # Locate the asset info
-            do_publish = False
-            param_dict = None
+        for asset_path in sorted(self.assets):
+            # Already processed?
+            if not self.client.check_add_processed_items(str(asset_path)):
+                # Prevent duplicates and infinite loops
+                continue
+            # Locate the asset info file and data
             dcc_object_name, param_dict = unreal_utils.get_asset_info(
                 asset_path
             )
@@ -126,14 +175,10 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
                 self.logger.exception(e)
                 import traceback
 
-                print('@@@ exc: "{}"'.format(traceback.format_exc()))
                 unrecognizeable_assets.append(asset_path)
                 continue
 
             if not absolute_asset_path.endswith('.uasset'):
-                print(
-                    '@@@ absolute_asset_path: "{}"'.format(absolute_asset_path)
-                )
                 unrecognizeable_assets.append(absolute_asset_path)
                 continue
 
@@ -171,6 +216,8 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
                 )
                 return
 
+            dependencies = []
+
             # Collect and store asset path
             for plugin in definition_fragment.get_all(
                 type=core_constants.COLLECTOR,
@@ -179,23 +226,38 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
                 if not 'options' in plugin:
                     plugin['options'] = {}
 
-                plugin['options']['collected_objects'] = [asset_path]
-                # Append dependencies
-                plugin['options']['collected_objects'].extend(
-                    unreal_utils.get_asset_dependencies(asset_path)
-                )
+                if not 'dependencies' in plugin['name']:
+                    plugin['options']['collected_objects'] = [asset_path]
+                else:
+                    # Resolve dependencies
+                    dependencies = unreal_utils.get_asset_dependencies(
+                        asset_path
+                    )
+                    plugin['options']['collected_objects'] = dependencies
 
             # Make sure sub dependencies are published in non interactive mode
             for plugin in definition_fragment.get_all(
-                type=core_constants.PLUGIN_PUBLISHER_POST_FINALIZER_TYPE,
+                type=core_constants.FINALIZER,
+                name='unreal_dependencies_publisher_post_finalizer',
                 category=core_constants.PLUGIN,
             ):
+                print(
+                    '@@@ Setting interactive mode to False for plugin {}'.format(
+                        plugin
+                    )
+                )
                 if not 'options' in plugin:
                     plugin['options'] = {}
                 plugin['options']['interactive'] = False
 
             result.append(
-                (asset_path, definition_fragment, dcc_object_name, param_dict)
+                (
+                    asset_path,
+                    definition_fragment,
+                    dependencies,
+                    dcc_object_name,
+                    param_dict,
+                )
             )
         if len(unrecognizeable_assets) > 0:
             dialog.ModalDialog(
@@ -205,21 +267,46 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
                 ),
             )
 
-        return result
+        # Store and present
+        self.set_items(result, UnrealAssetListWidget)
+
+    def update_items(self, project_context_id):
+        '''(Override) Update list of items to publish'''
+        if self.item_list:
+            for widget in self.item_list.assets:
+                widget.update_item(project_context_id)
 
     def prepare_run_definition(self, item):
         '''(Override) Called before *definition* is executed.'''
         # Make sure asset parent context exists and inject it into definition
-        (asset_path, definition, dcc_object_name, param_dict) = item
+        (
+            asset_path,
+            definition,
+            dependencies,
+            dcc_object_name,
+            param_dict,
+        ) = item
 
-        project_context_id = unreal_utils.get_project_level_context()
+        project_context_id = unreal_utils.get_project_context_id()
 
         asset_name = os.path.splitext(os.path.basename(asset_path))[0]
 
         # Create the asset build
         asset_build = unreal_utils.ensure_asset_build(
-            project_context_id, asset_path
+            project_context_id, asset_path, self.session
         )
+
+        # Determine status
+        project = self.session.query(
+            'Project where id="{}"'.format(asset_build['project_id'])
+        ).one()
+        schema = project['project_schema']
+        preferred_status = any_status = None
+        for status in schema.get_statuses('AssetVersion'):
+            any_status = status
+            if status['name'].lower() in ['approved', 'completed']:
+                preferred_status = status
+                break
 
         # Find existing asset
         asset = self.session.query(
@@ -239,110 +326,31 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
             if not 'options' in plugin:
                 plugin['options'] = {}
             # Store context data
-            project_context_id = self.batch_publisher_widget.project_context_id
-            plugin['options']['context_id'] = self.context_id
+            plugin['options']['context_id'] = self.client.context_id
             plugin['options']['project_context_id'] = project_context_id
             plugin['options']['asset_parent_context_id'] = asset_build['id']
             if asset_id:
                 plugin['options']['asset_id'] = asset_id
-            else:
-                plugin['options']['asset_name'] = asset_name
+            plugin['options']['asset_name'] = asset_name
+            if any_status:
+                plugin['options']['status_id'] = (
+                    preferred_status['id']
+                    if preferred_status
+                    else any_status['id']
+                )
             plugin['options']['is_valid_name'] = True
+            break
 
         return definition
 
-
-class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
-    @property
-    def project_context_id(self):
-        return self._project_context_selector.context_id
-
-    def __init__(self, client, parent=None):
-        super(UnrealBatchPublisherWidget, self).__init__(client, parent=parent)
-
-    def build(self):
-        '''(Override) Build the widget, add project context selector'''
-        self.warn_missing_definition_label = QtWidgets.QLabel(
-            '<html><i>Could not locate asset publisher definition, please check configuration!</i></html>'
-        )
-        self.layout().addWidget(self.warn_missing_definition_label)
-        self.project_context_label = QtWidgets.QLabel('Project Context:')
-        self.project_context_label.setObjectName('gray')
-        self.layout().addWidget(self.project_context_label)
-        self._project_context_selector = context_selector.ContextSelector(
-            self.session, enble_context_change=True, select_task=False
-        )
-        self.layout().addWidget(self._project_context_selector)
-        self.layout().addWidget(line.Line(style='solid'))
-        super(UnrealBatchPublisherWidget, self).build()
-
-    def post_build(self):
-        super(UnrealBatchPublisherWidget, self).post_build()
-        self._project_context_selector.entityChanged.connect(
-            self.on_project_context_changed
-        )
-
-    def on_context_changed(self, context_id):
-        '''(Override)Handle context change, propose default project context and populate project context selector'''
-        context = self.session.query(
-            'Context where id is "{}"'.format(context_id)
-        ).one()
-        default_project_context_id = context.get('project_id')
-        self._project_context_selector.browse_context_id = (
-            default_project_context_id
-        )
-        project_context_id = unreal_utils.get_project_context_id()
-        print(
-            '@@@ on_context_changed; project_context_id: {}'.format(
-                project_context_id
-            )
-        )
-        self._project_context_selector.context_id = project_context_id
-
-    def on_project_context_changed(self, context):
-        '''Handle context change - store it with current Unreal project'''
-        unreal_utils.set_project_context(context['id'])
-
-
-class UnrealAssetWidget(ItemBaseWidget):
-    '''Unreal asset widget to be used in batch publisher list widget'''
-
-    def get_ident_widget(self):
-        self._ident_widget = QtWidgets.QLabel()
-        return self._ident_widget
-
-    def get_context_widget(self):
-        self._context_widget = QtWidgets.QWidget()
-        return self._context_widget
-
-    def set_data(self, asset_path, definition, dcc_object_name, param_dict):
-        '''(Override) Set data to be displayed in widget'''
-        self._ident_widget.setText(str(asset_path))
-        super(UnrealAssetWidget, self).set_data(definition)
-        # Determine if needs publish
-        do_publish = False
-        if dcc_object_name is None:
-            # Not tracked yet, that's fine
-            do_publish = True
-        else:
-            # TODO: Check if the asset has changed since last publish
-            do_publish = True
-        self.set_selected(do_publish)
-        if not do_publish:
-            self.info_message = (
-                "Asset is up to date and has not changed since last publish"
-            )
-
-    def get_progress_label(self, item):
-        asset_path = item[0]
-        # Return asset name
-        return asset_path.split('/')[-1]
+    def _post_run_definition(self, item_widget, item, event):
+        '''Executed after an item has been publisher, enable publish sub dependencies.'''
+        print('@@@ _post_run_definition({})'.format(event))
 
 
 class UnrealAssetListWidget(BatchPublisherListBaseWidget):
     def rebuild(self):
         '''Add all assets(components) again from model.'''
-        # TODO: Save selection state
         clear_layout(self.layout())
         for row in range(self.model.rowCount()):
             index = self.model.createIndex(row, 0, self.model)
@@ -350,13 +358,17 @@ class UnrealAssetListWidget(BatchPublisherListBaseWidget):
             (
                 asset_path,
                 definition,
+                dependencies,
                 dcc_object_name,
                 param_dict,
             ) = self.model.data(index)
 
             # Build item widget
             item_widget = UnrealAssetWidget(
-                index, self._batch_publisher_widget, self.model.event_manager
+                index,
+                self._batch_publisher_widget,
+                dependencies,
+                self.model.event_manager,
             )
             set_property(
                 item_widget,
@@ -365,7 +377,11 @@ class UnrealAssetListWidget(BatchPublisherListBaseWidget):
             )
 
             item_widget.set_data(
-                asset_path, definition, dcc_object_name, param_dict
+                asset_path,
+                definition,
+                dependencies,
+                dcc_object_name,
+                param_dict,
             )
             self.layout().addWidget(item_widget)
             item_widget.clicked.connect(
@@ -375,5 +391,90 @@ class UnrealAssetListWidget(BatchPublisherListBaseWidget):
         self.layout().addWidget(QtWidgets.QLabel(), 1000)
         self.refreshed.emit()
 
-    def item_clicked(self, item_widget):
+    def item_clicked(self, event, item_widget):
         pass
+
+
+class UnrealAssetWidget(ItemBaseWidget):
+    '''Unreal asset widget to be used in batch publisher list widget'''
+
+    @property
+    def dependencies(self):
+        return self._dependencies
+
+    def __init__(
+        self,
+        index,
+        batch_publisher_widget,
+        dependencies,
+        event_manager,
+        parent=None,
+    ):
+        self._dependencies = dependencies or []
+        self._dependencies_batch_publisher_widget = None
+        self._asset_path = None
+        super(UnrealAssetWidget, self).__init__(
+            index,
+            batch_publisher_widget,
+            event_manager,
+            collapsable=len(dependencies) > 0,
+            parent=parent,
+        )
+
+    def get_ident_widget(self):
+        self._ident_widget = QtWidgets.QLabel()
+        return self._ident_widget
+
+    def get_context_widget(self):
+        self._context_widget = QtWidgets.QWidget()
+        return self._context_widget
+
+    def init_content(self, content_layout):
+        '''(Override) Build the widget content'''
+        if len(self.dependencies) > 0:
+            # Create a batch publisher widget for content and populate it
+            level = self.level + 1
+            self._dependencies_batch_publisher_widget = (
+                UnrealBatchPublisherWidget(
+                    self.batch_publisher_widget.client,
+                    self.dependencies,
+                    level=level,
+                )
+            )
+            self.content.layout().setContentsMargins(2 + (10 * level), 2, 2, 2)
+            self.add_widget(self._dependencies_batch_publisher_widget)
+            self.content.layout().addStretch()
+
+    def set_data(
+        self, asset_path, definition, dependencies, dcc_object_name, param_dict
+    ):
+        '''(Override) Set data to be displayed in widget'''
+        self._asset_path = asset_path
+        self._ident_widget.setText(str(asset_path))
+        super(UnrealAssetWidget, self).set_data(definition)
+        if self._dependencies_batch_publisher_widget:
+            self._dependencies_batch_publisher_widget.build_items(definition)
+        # Determine if needs publish
+        do_publish = False
+        if dcc_object_name is None:
+            # Not tracked yet, that's fine
+            do_publish = True
+        else:
+            # TODO: Check if the asset has changed since last publish
+            do_publish = True
+        self.set_checked(do_publish)
+        if not do_publish:
+            self.info_message = (
+                "Asset is up to date and has not changed since last publish"
+            )
+
+    def get_progress_label(self):
+        # Return asset name
+        return self._asset_path.split('/')[-1] if self._asset_path else '?'
+
+    def update_item(self, project_context_id):
+        '''A project context has been set, store with dependencies'''
+        if len(self.dependencies) > 0:
+            self._dependencies_batch_publisher_widget.update_items(
+                project_context_id
+            )
