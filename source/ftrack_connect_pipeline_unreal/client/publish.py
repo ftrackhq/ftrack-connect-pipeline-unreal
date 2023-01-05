@@ -359,39 +359,9 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
 
         return definition
 
-    def _post_run_definition(self, item_widget, item, progress_widget, event):
-        '''Executed after an item has been publisher, enable publish sub dependencies.'''
-        print('@@@ _post_run_definition({})'.format(event))
-        # Check for post finalizer data in event
-        user_data = None
-        for step in event.get('data', []):
-            for stage in step.get('result', []):
-                if stage.get('name') == 'post_finalizer':
-                    for plugin in stage.get('result', []):
-                        if (
-                            plugin.get('name')
-                            == 'unreal_dependencies_publisher_post_finalizer'
-                        ):
-                            if 'data' in plugin.get('user_data', {}):
-                                user_data = plugin['user_data']['data']
-                                break
-                if user_data:
-                    break
-            if user_data:
-                break
-        if not user_data:
-            self.logger.warning('No asset dependencies found in event data!')
-            return
-        dependencies_batch_publisher_widget = (
-            item_widget.dependencies_batch_publisher_widget
-        )
-        if not dependencies_batch_publisher_widget:
-            self.logger.warning(
-                'No sub dependency batch widget found for asset!'
-            )
-            return
-        dependencies_batch_publisher_widget.run(progress_widget)
-        # TODO: Store list of dependencies on parent asset version
+    def run_callback(self, item_widget, event):
+        '''(Override) Executed after an item has been publisher through event from pipieline,
+        enable publish sub dependencies.'''
 
 
 class UnrealAssetListWidget(BatchPublisherListBaseWidget):
