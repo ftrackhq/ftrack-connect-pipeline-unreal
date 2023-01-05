@@ -522,17 +522,17 @@ def sanitize_asset_path(asset_path):
     return asset_path_sanitized
 
 
-def ftrack_asset_path_exist(root_context_id, full_ftrack_path, session):
+def ftrack_asset_path_exist(root_context_id, asset_path, session):
     '''Check if the given *full_ftrack_path* exist in the ftrack platform'''
     parent_context = session.query(
         'Context where id is "{}"'.format(root_context_id)
     ).one()
     if not parent_context:
         return False
-    full_ftrack_path = sanitize_asset_path(full_ftrack_path)
+    full_ftrack_path = sanitize_asset_path(asset_path)
     # Split asset path in array parts
     asset_path_parts = full_ftrack_path.split('/')
-    #Get index of the root to support full path and asset path
+    # Get index of the root to support full path and asset path
     if parent_context['name'] not in asset_path_parts:
         start_idx = None
     else:
@@ -554,6 +554,41 @@ def ftrack_asset_path_exist(root_context_id, full_ftrack_path, session):
     return True
 
 
+def get_asset_build_form_path(root_context_id, asset_path, session):
+    '''Check if the given *full_ftrack_path* exist in the ftrack platform'''
+    parent_context = session.query(
+        'Context where id is "{}"'.format(root_context_id)
+    ).one()
+    if not parent_context:
+        return
+    full_ftrack_path = sanitize_asset_path(asset_path)
+    # Split asset path in array parts
+    asset_path_parts = full_ftrack_path.split('/')
+    # Get index of the root to support full path and asset path
+    if parent_context['name'] not in asset_path_parts:
+        start_idx = None
+    else:
+        start_idx = asset_path_parts.index(parent_context['name'])
+    if start_idx or start_idx == 0:
+        asset_path_parts = asset_path_parts[start_idx + 1:]
+
+    child_context = None
+    # Check from the root forward
+    for index, part in enumerate(asset_path_parts):
+        # Check if current part already exists
+        child_context = session.query(
+            'select id,name from Context where parent.id is "{0}" and name="{1}"'.format(
+                parent_context['id'], part
+            )
+        ).first()
+
+        if not child_context:
+            return
+
+        parent_context = child_context
+    return child_context
+
+
 def get_ftrack_ancestors_names(ftrack_object):
     ''' Returns ancestor names of the given ftrack_object '''
     return list(x['name'] for x in list(ftrack_object['ancestors']))
@@ -568,16 +603,16 @@ def get_full_ftrack_asset_path(root_context_id, asset_path, session):
     parent_context = session.query(
         'Context where id is "{}"'.format(root_context_id)
     ).one()
-    # Get project ftrack object from where our root_context_id is pointing.
-    project = session.query(
-        'Project where id="{}"'.format(parent_context['project_id'])
-    ).one()
-
     if not parent_context:
         raise Exception(
             'Could not find the root context object in ftrack, '
             'Please make sure the Root is created in your project.'
         )
+    # Get project ftrack object from where our root_context_id is pointing.
+    project = session.query(
+        'Project where id="{}"'.format(parent_context['project_id'])
+    ).one()
+
     # Get ancestors from root to project
     ancestor_names = get_ftrack_ancestors_names(parent_context)
 
@@ -589,6 +624,72 @@ def get_full_ftrack_asset_path(root_context_id, asset_path, session):
         *asset_path_sanitized.split('/')
     )
     return full_path
+
+def get_fake_asset_build(root_context_id, asset_name, session):
+    parent_context = session.query(
+        'Context where id is "{}"'.format(root_context_id)
+    ).one()
+    if not parent_context:
+        raise Exception(
+            'Could not find the root context object in ftrack, '
+            'Please make sure the Root is created in your project.'
+        )
+    # Get project ftrack object from where our root_context_id is pointing.
+    project = session.query(
+        'Project where id="{}"'.format(parent_context['project_id'])
+    ).one()
+
+    objecttype_assetbuild = session.query(
+        'ObjectType where name="{}"'.format('Asset Build')
+    ).one()
+    schema = session.query(
+        'Schema where project_schema_id="{0}" and object_type_id="{1}"'.format(
+            project['project_schema_id'],
+            objecttype_assetbuild['id'],
+        )
+    ).one()
+    preferred_assetbuild_type = assetbuild_type = None
+    for typ in session.query(
+            'SchemaType where schema_id="{0}"'.format(schema['id'])
+    ).all():
+        assetbuild_type = session.query(
+            'Type where id="{0}"'.format(typ['type_id'])
+        ).first()
+        if assetbuild_type['name'] == 'Prop':
+            preferred_assetbuild_type = assetbuild_type
+            break
+    if not assetbuild_type:
+        raise Exception(
+            'Could not find a asset build type to be used when '
+            'creating the Unreal project level asset build!'
+        )
+    preferred_assetbuild_status = assetbuild_status = None
+    for st in session.query(
+            'SchemaStatus where schema_id="{0}"'.format(schema['id'])
+    ).all():
+        assetbuild_status = session.query(
+            'Status where id="{0}"'.format(st['status_id'])
+        ).first()
+        if assetbuild_status['name'] == 'Completed':
+            preferred_assetbuild_status = assetbuild_status
+            break
+    if not assetbuild_status:
+        raise Exception(
+            'Could not find a asset build status to be used when '
+            'creating the Unreal project level asset build!'
+        )
+    # Create an asset build
+    child_context = session.create(
+        'AssetBuild',
+        {
+            'name': asset_name,
+            'parent': parent_context,
+            'type': preferred_assetbuild_type or assetbuild_type,
+            'status': preferred_assetbuild_status
+                      or assetbuild_status,
+        },
+    )
+    return child_context
 
 
 def push_ftrack_asset_path_to_server(root_context_id, asset_path, session):
@@ -725,7 +826,7 @@ def get_asset_dependencies(asset_path):
         str(dep)
         for dep in asset_reg.get_dependencies(
             asset_path.split('.')[0], dep_options
-        )
+        ) or []
     ]
 
     # Filter out only dependencies that are in Game
