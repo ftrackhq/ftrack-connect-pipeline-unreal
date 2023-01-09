@@ -327,15 +327,18 @@ def open_asset(path, options, session):
         if parent_context['id'] == root_context_id:
             found_root_context = True
             break
-        elif parent_context.entity_type == 'Project':
+        link.insert(0, parent_context['name'])
+        if (
+            parent_context.entity_type == 'Project'
+            or not 'parent' in parent_context
+        ):
             # Stop here
             break
         parent_context = session.query(
-            'select name, parent_id from Context where id is "{}"'.format(
-                parent_context['parent_id']
+            'select name from Context where id is "{}"'.format(
+                parent_context['parent']['id']
             )
         ).first()
-        link.insert(0, parent_context['name'])
 
     root_content_dir = (
         unreal.SystemLibrary.get_project_content_directory().replace(
@@ -343,16 +346,29 @@ def open_asset(path, options, session):
         )
     )
     if found_root_context:
-        # Import relative to project root context, remove asset build part
+        # Import relative to project root context, remove Content start folder and cut off asset build part
         filename = '{}{}'.format(asset['name'], extension)
-        import_path = os.path.join(root_content_dir, os.path.join(link[:-1]))
+        import_path = os.path.join(root_content_dir, os.sep.join(link[1:-2]))
+        print(
+            '@@@ found root context; filename: {}; import_path: {}'.format(
+                filename, import_path
+            )
+        )
     else:
         # Import relative to project root
-        import_path = os.path.join(root_content_dir, os.path.join(link))
+        import_path = os.path.join(root_content_dir, os.sep.join(link))
+        print(
+            '@@@ DID NOT found root context; filename: {}; import_path: {}'.format(
+                filename, import_path
+            )
+        )
     import_path = os.path.join(import_path, filename)
 
-    logger.debug('Importing asset to {}'.format(import_path))
+    parent = os.path.dirname(import_path)
+    if not os.path.exists(parent):
+        os.makedirs(parent)
     shutil.copy(path, import_path)
+    return import_path
 
 
 def import_file(asset_import_task):

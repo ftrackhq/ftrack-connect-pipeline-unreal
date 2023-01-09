@@ -24,3 +24,8 @@ class UnrealQtOpenerClientWidget(open.QtOpenerClientWidget):
 
     def __init__(self, event_manager, parent=None):
         super(UnrealQtOpenerClientWidget, self).__init__(event_manager)
+
+        # Make sure we become a proper window
+        self.setWindowFlags(QtCore.Qt.Window)
+
+        self.resize(850, 530)

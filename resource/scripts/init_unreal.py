@@ -162,7 +162,7 @@ def load_integration():
                         parent_asset_version_id=event['data']['pipeline'].get(
                             'parent_asset_version_id'
                         )
-                        or 'f5139a97-a016-46d1-896c-3719376fb3ba',
+                        or '948b423f-2cc1-431c-b962-8dbcee595550',
                         title=event['data']['pipeline'].get('title'),
                         immediate_run=event['data']['pipeline'].get(
                             'interactive'
