@@ -10,6 +10,6 @@ IMPORT_MODE = 'import'
 OPEN_MODE = 'open'
 
 LOAD_MODES = {
-    OPEN_MODE: unreal_utils.open_file,
+    OPEN_MODE: unreal_utils.open_asset,
     IMPORT_MODE: unreal_utils.import_file,
 }

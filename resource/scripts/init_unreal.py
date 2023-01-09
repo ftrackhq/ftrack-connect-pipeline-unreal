@@ -67,6 +67,7 @@ def load_integration():
 
     from ftrack_connect_pipeline_unreal import host as unreal_host
     from ftrack_connect_pipeline_unreal.client import (
+        open,
         load,
         asset_manager,
         publish,
@@ -154,8 +155,9 @@ def load_integration():
                         event_manager,
                         event['data']['pipeline'].get('assets')
                         or [
-                            "/Game/StarterContent/Blueprints/Blueprint_Effect_Fire",
-                            "/Game/StarterContent/Props/SM_TableRound",
+                            "/Game/Unreal/ASSETS/WallE/rigging/rig/game",
+                            # "/Game/StarterContent/Blueprints/Blueprint_Effect_Fire",
+                            # "/Game/StarterContent/Props/SM_TableRound",
                         ],
                         parent_asset_version_id=event['data']['pipeline'].get(
                             'parent_asset_version_id'
@@ -206,6 +208,15 @@ def load_integration():
         asset_list_model = AssetListModel(event_manager)
 
         widgets = list()
+        widgets.append(
+            (
+                core_constants.OPENER,
+                open.UnrealQtOpenerClientWidget,
+                'Open',
+                '',
+                True,
+            )
+        )
         widgets.append(
             (
                 qt_constants.ASSEMBLER_WIDGET,
