@@ -308,7 +308,7 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
         asset_name = os.path.splitext(os.path.basename(asset_path))[0]
 
         # Create the asset build
-        asset_build = unreal_utils.ensure_asset_build(
+        asset_build = unreal_utils.push_ftrack_asset_path_to_server(
             root_context_id, asset_path, self.session
         )
 
