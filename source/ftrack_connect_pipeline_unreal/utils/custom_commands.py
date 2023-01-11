@@ -1,6 +1,7 @@
 # :coding: utf-8
 # :copyright: Copyright (c) 2014-2022 ftrack
 import threading
+import traceback
 from functools import wraps
 import os
 import logging
@@ -15,7 +16,12 @@ import unreal
 from ftrack_connect_pipeline.utils import (
     get_save_path,
 )
+
+from ftrack_connect_pipeline.utils import str_version
+
 from ftrack_connect_pipeline_unreal.constants import asset as asset_const
+from ftrack_connect_pipeline_unreal.asset import UnrealFtrackObjectManager
+from ftrack_connect_pipeline_unreal.asset.dcc_object import UnrealDccObject
 
 logger = logging.getLogger(__name__)
 
@@ -349,19 +355,9 @@ def open_asset(path, options, session):
         # Import relative to project root context, remove Content start folder and cut off asset build part
         filename = '{}{}'.format(asset['name'], extension)
         import_path = os.path.join(root_content_dir, os.sep.join(link[1:-2]))
-        print(
-            '@@@ found root context; filename: {}; import_path: {}'.format(
-                filename, import_path
-            )
-        )
     else:
         # Import relative to project root
         import_path = os.path.join(root_content_dir, os.sep.join(link))
-        print(
-            '@@@ DID NOT found root context; filename: {}; import_path: {}'.format(
-                filename, import_path
-            )
-        )
     import_path = os.path.join(import_path, filename)
 
     parent = os.path.dirname(import_path)
@@ -369,6 +365,116 @@ def open_asset(path, options, session):
         os.makedirs(parent)
     shutil.copy(path, import_path)
     return import_path
+
+
+def import_dependencies(version_id, event_manager, provided_logger=None):
+    '''Recursive import all dependencies of the given *version_id* using *session* object logging woth *provided_logger*. Returns a list
+    of messages about the import process.'''
+
+    result = []
+
+    logger_effective = provided_logger or logger
+
+    def add_message(message):
+        print(message)
+        logger_effective.info(message)
+        result.append(message)
+
+    assetversion = event_manager.session.query(
+        'AssetVersion where id="{}"'.format(version_id)
+    ).one()
+    ident = str_version(assetversion, by_task=False)
+
+    location = event_manager.session.pick_location()
+
+    dependencies = None
+    if 'ftrack-connect-pipeline-unreal' in list(
+        assetversion['metadata'].keys()
+    ):
+        metadata = json.loads(
+            assetversion['metadata']['ftrack-connect-pipeline-unreal']
+        )
+        if 'dependencies' in metadata:
+            dependencies = metadata.get('dependencies', [])
+    if not dependencies:
+        add_message('No dependencies found for {}'.format(ident))
+        return result
+
+    if not os.path.exists(asset_const.FTRACK_ROOT_PATH):
+        os.makedirs(asset_const.FTRACK_ROOT_PATH)
+
+    for dependency in dependencies:
+        dependency_ident = str(dependency)
+        try:
+            # Fetch the version
+            dependency_assetversion = event_manager.session.query(
+                'AssetVersion where id="{}"'.format(dependency['version'])
+            ).one()
+            dependency_ident = str_version(
+                dependency_assetversion, by_task=False
+            )
+            # Check if asset is already tracked in Unreal
+            asset_info = dependency['asset_info']
+            ftrack_object_manager = UnrealFtrackObjectManager(event_manager)
+            ftrack_object_manager.asset_info = asset_info
+            dcc_object = UnrealDccObject()
+            dcc_object.name = ftrack_object_manager._generate_dcc_object_name()
+            if dcc_object.exists():
+                # TODO: check if different version and align them properly
+                add_message(
+                    'Asset "{}" already tracked in Unreal'.format(
+                        dependency_ident
+                    )
+                )
+                continue
+            # Is it available in this location?
+            component = event_manager.session.query(
+                'Component where name=snapshot and version.id="{}"'.format(
+                    dependency_assetversion['id']
+                )
+            ).one()
+            if location.get_component_availability(component) != 100.0:
+                add_message(
+                    'Asset "{}" is not available in current location ({})'.format(
+                        dependency_ident, location['name']
+                    )
+                )
+                continue
+            # Bring it in
+            component_path = location.get_filesystem_path(component)
+            unreal_options = {'version_id': dependency_assetversion['id']}
+            logger_effective.debug(
+                'Importing dependency asset {} from: "{}"'.format(
+                    dependency_ident, component_path
+                )
+            )
+            path_import = open_asset(
+                component_path, unreal_options, event_manager.session
+            )
+            add_message(
+                'Imported asset {} to: "{}", tracking asset.'.format(
+                    dependency_ident, path_import
+                )
+            )
+            # Store asset info
+            dcc_object.update(asset_info)
+            dcc_object.store()
+            # Import dependencies of this asset
+            result.extend(
+                import_dependencies(
+                    dependency_assetversion['id'],
+                    event_manager,
+                    logger_effective,
+                )
+            )
+        except:
+            add_message(traceback.format_exc())
+            add_message(
+                'An exception occurred when attempting to import dependency {}'.format(
+                    dependency_ident
+                )
+            )
+    return result
 
 
 def import_file(asset_import_task):
@@ -383,43 +489,7 @@ def import_file(asset_import_task):
     )
 
 
-def save_file(save_path, context_id=None, session=None, temp=True, save=True):
-    '''Save scene locally in temp or with the next version number based on latest version
-    in ftrack.'''
-
-    # # Max has no concept of renaming a scene, always save
-    # save = True
-    #
-    # if save_path is None:
-    #     if context_id is not None and session is not None:
-    #         # Attempt to find out based on context
-    #         save_path, message = get_save_path(
-    #             context_id, session, extension='.max', temp=temp
-    #         )
-    #
-    #         if save_path is None:
-    #             return False, message
-    #     else:
-    #         return (
-    #             False,
-    #             'No context and/or session provided to generate save path',
-    #         )
-    #
-    # if save:
-    #     rt.savemaxFile(save_path, useNewFile=True)
-    #     message = 'Saved Max scene @ "{}"'.format(save_path)
-    # else:
-    #     raise Exception('Max scene rename not supported')
-    #
-    # result = save_path
-    #
-    # return result, message
-    pass
-
-
 ### REFERENCES ###
-# Follow this link for more reference commands in max:
-# https://help.autodesk.com/view/3DSMAX/2016/ENU/?guid=__files_GUID_090B28AB_5710_45BB_B324_8B6FD131A3C8_htm
 
 
 def reference_file(path, options=None):

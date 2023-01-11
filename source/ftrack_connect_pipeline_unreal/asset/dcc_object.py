@@ -81,6 +81,22 @@ class UnrealDccObject(DccObject):
 
         return self.name
 
+    def store(self):
+        '''Stores remote dcc object in dcc, requires name and asset info to be loaded'''
+        if not os.path.exists(asset_const.FTRACK_ROOT_PATH):
+            self.logger.warning(
+                'Creating project ftrack folder: {}'.format(
+                    asset_const.FTRACK_ROOT_PATH
+                )
+            )
+            os.makedirs(asset_const.FTRACK_ROOT_PATH)
+
+        with open(self.ftrack_file_path, "w") as outfile:
+            json.dump(self, outfile)
+
+    def exists(self):
+        return self._name_exists(self.name)
+
     def _name_exists(self, name):
         '''
         Return true if the given *name* as ftrack file exists in the project.
