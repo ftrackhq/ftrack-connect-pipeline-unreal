@@ -257,11 +257,6 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
             for plugin in definition_fragment.get_all(
                 plugin='unreal_dependencies_publisher_post_finalizer',
             ):
-                print(
-                    '@@@ Setting interactive mode to False for plugin {}'.format(
-                        plugin
-                    )
-                )
                 if not 'options' in plugin:
                     plugin['options'] = {}
                 plugin['options']['interactive'] = False
@@ -307,9 +302,14 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
 
         asset_name = os.path.splitext(os.path.basename(asset_path))[0]
 
+        # Get the full ftrack asset path
+        full_ftrack_asset_path = unreal_utils.get_full_ftrack_asset_path(
+            root_context_id, asset_path, session=self.session
+        )
+
         # Create the asset build
         asset_build = unreal_utils.push_ftrack_asset_path_to_server(
-            root_context_id, asset_path, self.session
+            root_context_id, full_ftrack_asset_path, self.session
         )
 
         # Determine status
@@ -345,6 +345,7 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
             plugin['options']['context_id'] = self.client.context_id
             plugin['options']['root_context_id'] = root_context_id
             plugin['options']['asset_parent_context_id'] = asset_build['id']
+            plugin['options']['ftrack_asset_path'] = full_ftrack_asset_path
             if asset_id:
                 plugin['options']['asset_id'] = asset_id
             plugin['options']['asset_name'] = asset_name
@@ -489,7 +490,7 @@ class UnrealAssetWidget(ItemBaseWidget):
                 "Asset is up to date and has not changed since last publish"
             )
 
-    def get_progress_label(self):
+    def get_ident(self):
         # Return asset name
         return self._asset_path.split('/')[-1] if self._asset_path else '?'
 

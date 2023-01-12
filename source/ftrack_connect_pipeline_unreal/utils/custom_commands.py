@@ -515,7 +515,7 @@ def set_root_context_id(context_id):
 
 
 def sanitize_asset_path(asset_path):
-    ''' Convert given *asset_path* to a content-browser like path'''
+    '''Convert given *asset_path* to a content-browser like path'''
     # TODO: should ask epic at some point to get the full path as its shown in
     #  the content browser so we don't have to "magically" change it here
     asset_path_sanitized = asset_path.replace('/Game', 'Content')
@@ -538,7 +538,7 @@ def ftrack_asset_path_exist(root_context_id, asset_path, session):
     else:
         start_idx = asset_path_parts.index(parent_context['name'])
     if start_idx or start_idx == 0:
-        asset_path_parts = asset_path_parts[start_idx + 1:]
+        asset_path_parts = asset_path_parts[start_idx + 1 :]
 
     # Check from the root forward
     for index, part in enumerate(asset_path_parts):
@@ -570,7 +570,7 @@ def get_asset_build_form_path(root_context_id, asset_path, session):
     else:
         start_idx = asset_path_parts.index(parent_context['name'])
     if start_idx or start_idx == 0:
-        asset_path_parts = asset_path_parts[start_idx + 1:]
+        asset_path_parts = asset_path_parts[start_idx + 1 :]
 
     child_context = None
     # Check from the root forward
@@ -590,12 +590,12 @@ def get_asset_build_form_path(root_context_id, asset_path, session):
 
 
 def get_ftrack_ancestors_names(ftrack_object):
-    ''' Returns ancestor names of the given ftrack_object '''
+    '''Returns ancestor names of the given ftrack_object'''
     return list(x['name'] for x in list(ftrack_object['ancestors']))
 
 
 def get_full_ftrack_asset_path(root_context_id, asset_path, session):
-    ''' Given the *root_context_id* and the *asset_path*,
+    '''Given the *root_context_id* and the *asset_path*,
     returns the full path for the ftrack platform'''
     # Sanitize asset_path
     asset_path_sanitized = sanitize_asset_path(asset_path)
@@ -616,7 +616,7 @@ def get_full_ftrack_asset_path(root_context_id, asset_path, session):
     # Get ancestors from root to project
     ancestor_names = get_ftrack_ancestors_names(parent_context)
 
-    #Generate full path
+    # Generate full path
     full_path = os.path.join(
         project['name'],
         *ancestor_names,
@@ -624,6 +624,7 @@ def get_full_ftrack_asset_path(root_context_id, asset_path, session):
         *asset_path_sanitized.split('/')
     )
     return full_path.replace("\\", "/")
+
 
 def get_fake_asset_build(root_context_id, asset_name, session):
     parent_context = session.query(
@@ -651,7 +652,7 @@ def get_fake_asset_build(root_context_id, asset_name, session):
     statuses = project['project_schema'].get_statuses('AssetVersion')
     preferred_assetbuild_type = assetbuild_type = None
     for typ in session.query(
-            'SchemaType where schema_id="{0}"'.format(schema['id'])
+        'SchemaType where schema_id="{0}"'.format(schema['id'])
     ).all():
         assetbuild_type = session.query(
             'Type where id="{0}"'.format(typ['type_id'])
@@ -666,7 +667,7 @@ def get_fake_asset_build(root_context_id, asset_name, session):
         )
     preferred_assetbuild_status = assetbuild_status = None
     for st in session.query(
-            'SchemaStatus where schema_id="{0}"'.format(schema['id'])
+        'SchemaStatus where schema_id="{0}"'.format(schema['id'])
     ).all():
         assetbuild_status = session.query(
             'Status where id="{0}"'.format(st['status_id'])
@@ -686,8 +687,7 @@ def get_fake_asset_build(root_context_id, asset_name, session):
             'name': asset_name,
             'parent': parent_context,
             'type': preferred_assetbuild_type or assetbuild_type,
-            'status': preferred_assetbuild_status
-                      or assetbuild_status,
+            'status': preferred_assetbuild_status or assetbuild_status,
         },
     )
     return child_context, statuses
@@ -719,7 +719,7 @@ def push_ftrack_asset_path_to_server(root_context_id, asset_path, session):
     else:
         start_idx = asset_path_parts.index(parent_context['name'])
     if start_idx or start_idx == 0:
-        asset_path_parts = asset_path_parts[start_idx + 1:]
+        asset_path_parts = asset_path_parts[start_idx + 1 :]
 
     for index, part in enumerate(asset_path_parts):
         # Check if current part already exists
@@ -758,7 +758,7 @@ def push_ftrack_asset_path_to_server(root_context_id, asset_path, session):
                 ).one()
                 preferred_assetbuild_type = assetbuild_type = None
                 for typ in session.query(
-                        'SchemaType where schema_id="{0}"'.format(schema['id'])
+                    'SchemaType where schema_id="{0}"'.format(schema['id'])
                 ).all():
                     assetbuild_type = session.query(
                         'Type where id="{0}"'.format(typ['type_id'])
@@ -773,7 +773,7 @@ def push_ftrack_asset_path_to_server(root_context_id, asset_path, session):
                     )
                 preferred_assetbuild_status = assetbuild_status = None
                 for st in session.query(
-                        'SchemaStatus where schema_id="{0}"'.format(schema['id'])
+                    'SchemaStatus where schema_id="{0}"'.format(schema['id'])
                 ).all():
                     assetbuild_status = session.query(
                         'Status where id="{0}"'.format(st['status_id'])
@@ -794,7 +794,7 @@ def push_ftrack_asset_path_to_server(root_context_id, asset_path, session):
                         'parent': parent_context,
                         'type': preferred_assetbuild_type or assetbuild_type,
                         'status': preferred_assetbuild_status
-                                  or assetbuild_status,
+                        or assetbuild_status,
                     },
                 )
                 session.commit()
@@ -827,7 +827,8 @@ def get_asset_dependencies(asset_path):
         str(dep)
         for dep in asset_reg.get_dependencies(
             asset_path.split('.')[0], dep_options
-        ) or []
+        )
+        or []
     ]
 
     # Filter out only dependencies that are in Game
