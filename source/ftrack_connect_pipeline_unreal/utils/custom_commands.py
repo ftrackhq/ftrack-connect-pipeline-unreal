@@ -623,7 +623,7 @@ def get_full_ftrack_asset_path(root_context_id, asset_path, session):
         parent_context['name'],
         *asset_path_sanitized.split('/')
     )
-    return full_path
+    return full_path.replace("\\", "/")
 
 def get_fake_asset_build(root_context_id, asset_name, session):
     parent_context = session.query(
