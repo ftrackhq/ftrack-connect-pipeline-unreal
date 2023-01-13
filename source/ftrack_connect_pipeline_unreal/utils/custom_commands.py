@@ -626,7 +626,8 @@ def get_full_ftrack_asset_path(root_context_id, asset_path, session):
     return full_path.replace("\\", "/")
 
 
-def get_fake_asset_build(root_context_id, asset_name, session):
+def get_fake_asset_build(root_context_id, asset_path, session):
+    asset_path = sanitize_asset_path(asset_path)
     parent_context = session.query(
         'Context where id is "{}"'.format(root_context_id)
     ).one()
@@ -640,6 +641,10 @@ def get_fake_asset_build(root_context_id, asset_name, session):
         'Project where id="{}"'.format(parent_context['project_id'])
     ).one()
 
+    # Split asset path in array parts
+    asset_path_parts = asset_path.split('/')
+
+    # Get Object type
     objecttype_assetbuild = session.query(
         'ObjectType where name="{}"'.format('Asset Build')
     ).one()
@@ -665,6 +670,7 @@ def get_fake_asset_build(root_context_id, asset_name, session):
             'Could not find a asset build type to be used when '
             'creating the Unreal project level asset build!'
         )
+    # Get status
     preferred_assetbuild_status = assetbuild_status = None
     for st in session.query(
         'SchemaStatus where schema_id="{0}"'.format(schema['id'])
@@ -680,11 +686,13 @@ def get_fake_asset_build(root_context_id, asset_name, session):
             'Could not find a asset build status to be used when '
             'creating the Unreal project level asset build!'
         )
+
+
     # Create an asset build
     child_context = session.create(
         'AssetBuild',
         {
-            'name': asset_name,
+            'name': asset_path_parts[-1],
             'parent': parent_context,
             'type': preferred_assetbuild_type or assetbuild_type,
             'status': preferred_assetbuild_status or assetbuild_status,
