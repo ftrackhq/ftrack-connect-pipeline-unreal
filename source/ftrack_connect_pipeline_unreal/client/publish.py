@@ -74,7 +74,6 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
         asset_paths,
         parent_asset_version_id=None,
         title=None,
-        immediate_run=False,
         parent=None,
     ):
         self._parent_asset_version_id = parent_asset_version_id
@@ -82,7 +81,6 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
             event_manager,
             asset_paths,
             title=title,
-            immediate_run=immediate_run,
             parent=parent,
         )
         self.setWindowTitle(title or 'ftrack Unreal Asset Publisher')
