@@ -346,58 +346,6 @@ def save_file(save_path, context_id=None, session=None, temp=True, save=True):
     pass
 
 
-### REFERENCES ###
-# Follow this link for more reference commands in max:
-# https://help.autodesk.com/view/3DSMAX/2016/ENU/?guid=__files_GUID_090B28AB_5710_45BB_B324_8B6FD131A3C8_htm
-
-
-def reference_file(path, options=None):
-    '''Native reference file function'''
-    # return cmds.file(path, o=True, f=True)
-    pass
-
-
-def get_reference_node(dcc_object_name):
-    '''
-    Return the scene reference_node associated to the given
-    *dcc_object_name*
-    '''
-    # dcc_object_node = rt.getNodeByName(dcc_object_name, exact=True)
-    # if not dcc_object_node:
-    #     return
-    # component_path = asset_const.COMPONENT_PATH
-    # for idx in range(1, rt.xrefs.getXRefFileCount()):
-    #     reference_node = rt.xrefs.getXrefFile(idx)
-    #     if reference_node.filename == component_path:
-    #         return reference_node
-    pass
-
-
-def remove_reference_node(reference_node):
-    '''Remove reference'''
-    # rt.delete(reference_node)
-    pass
-
-
-def unload_reference_node(reference_node):
-    '''Disable reference'''
-    # reference_node.disabled = True
-    pass
-
-
-def load_reference_node(reference_node):
-    '''Disable reference'''
-    # reference_node.disabled = False
-    pass
-
-
-def update_reference_path(reference_node, component_path):
-    '''Update the path of the given *reference_node* with the given
-    *component_path*'''
-    # reference_node.filename = component_path
-    pass
-
-
 #### PROJECT LEVEL PUBLISH AND LOAD ####
 
 
@@ -626,7 +574,9 @@ def get_full_ftrack_asset_path(root_context_id, asset_path, session):
     return full_path.replace("\\", "/")
 
 
-def get_fake_asset_build(root_context_id, asset_path, session):
+def get_temp_asset_build(root_context_id, asset_path, session):
+    '''Returns the temp asset build under the given *root_context_id*, basing the name on *asset_path* using *session*'''
+
     asset_path = sanitize_asset_path(asset_path)
     parent_context = session.query(
         'Context where id is "{}"'.format(root_context_id)
@@ -700,7 +650,7 @@ def get_fake_asset_build(root_context_id, asset_path, session):
     return child_context, statuses
 
 
-def push_ftrack_asset_path_to_server(root_context_id, asset_path, session):
+def push_asset_build_to_server(root_context_id, asset_path, session):
     '''
     Ensure that an asset build structure exists on the *asset_path* relative
     *root_context_id*
@@ -1126,9 +1076,3 @@ def assets_to_paths(assets):
     for asset in assets:
         result.append(asset.get_path_name())
     return result
-
-
-def disk_log(s):
-    with open('C:\\TEMP\\unreal_log.txt', 'a') as f:
-        f.write('[{}] {}\n'.format(datetime.datetime.now(), s))
-    print(s)
