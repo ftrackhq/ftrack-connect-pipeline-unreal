@@ -687,7 +687,6 @@ def get_fake_asset_build(root_context_id, asset_path, session):
             'creating the Unreal project level asset build!'
         )
 
-
     # Create an asset build
     child_context = session.create(
         'AssetBuild',
