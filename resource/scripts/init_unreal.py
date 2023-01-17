@@ -103,7 +103,13 @@ def load_integration():
             'Ftrack.Menu', 'Python', 'ftrack Menu', 'ftrack'
         )
 
-    def _open_widget(event_manager, asset_list_model, widgets, event):
+    def _open_widget(
+        event_manager,
+        asset_list_model,
+        snapshot_asset_list_model,
+        widgets,
+        event,
+    ):
         '''Open Unreal widget based on widget name in *event*, and create if not already
         exists'''
         widget_name = None
@@ -147,7 +153,11 @@ def load_integration():
                     core_constants.ASSET_MANAGER,
                 ]:
                     # Create with asset model
-                    widget = ftrack_client(event_manager, asset_list_model)
+                    widget = ftrack_client(
+                        event_manager,
+                        asset_list_model,
+                        snapshot_asset_list_model,
+                    )
                 elif widget_name == qt_constants.BATCH_PUBLISHER_WIDGET:
                     widget = ftrack_client(
                         event_manager,
@@ -192,8 +202,9 @@ def load_integration():
 
         logger.debug('Setting up the menu')
 
-        # Shared asset manager model
+        # Shared asset manager models
         asset_list_model = AssetListModel(event_manager)
+        snapshot_asset_list_model = AssetListModel(event_manager)
 
         widgets = list()
         widgets.append(
@@ -292,7 +303,11 @@ def load_integration():
                 core_constants.PIPELINE_CLIENT_LAUNCH, host.host_id
             ),
             functools.partial(
-                _open_widget, event_manager, asset_list_model, widgets
+                _open_widget,
+                event_manager,
+                asset_list_model,
+                snapshot_asset_list_model,
+                widgets,
             ),
         )
 

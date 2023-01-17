@@ -9,18 +9,28 @@ import ftrack_connect_pipeline_qt.constants as qt_constants
 from ftrack_connect_pipeline_qt.ui.asset_manager.base import (
     AssetManagerBaseWidget,
 )
+from ftrack_connect_pipeline_qt.ui.asset_manager.asset_manager import (
+    AssetWidget,
+)
+
 import ftrack_connect_pipeline_unreal.constants as unreal_constants
 
 
 class UnrealQtAssetManagerClientWidget(QtAssetManagerClientWidget):
+    '''Dockable unreal asset manager widget'''
+
     ui_types = [
         constants.UI_TYPE,
         qt_constants.UI_TYPE,
         unreal_constants.UI_TYPE,
     ]
-    '''Dockable unreal asset manager widget'''
 
-    def __init__(self, event_manager, asset_list_model, parent=None):
+    snapshot_assets = True
+
+    def __init__(
+        self, event_manager, asset_list_model, snapshot_list_model, parent=None
+    ):
+        self._snapshot_list_model = snapshot_list_model
         super(UnrealQtAssetManagerClientWidget, self).__init__(
             event_manager,
             asset_list_model,
@@ -33,8 +43,14 @@ class UnrealQtAssetManagerClientWidget(QtAssetManagerClientWidget):
     def get_theme_background_style(self):
         return 'unreal'
 
+    def get_snapshot_asset_widget_class(self):
+        '''Return snapshot asset widget class'''
+        return UnrealSnapshotAssetWidget
 
-class UnrealSnapshotAssetManagerWidget(AssetManagerBaseWidget):
-    def get_tab_name(self):
-        '''Return the name of the tab, if multiple tabs are used. Can be overridden by child'''
-        return 'Unreal Assets'
+    def get_snapshot_list_model(self):
+        '''Return snapshot list model'''
+        return self._snapshot_list_model
+
+
+class UnrealSnapshotAssetWidget(AssetWidget):
+    '''Unreal snapshot asset widget, adjust rendering with indentation'''
