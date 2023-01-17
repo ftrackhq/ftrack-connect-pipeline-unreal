@@ -488,54 +488,37 @@ def import_file(asset_import_task):
         else None
     )
 
+def save_file(save_path, context_id=None, session=None, temp=True, save=True):
+    '''Save scene locally in temp or with the next version number based on latest version
+    in ftrack.'''
 
-### REFERENCES ###
-
-
-def reference_file(path, options=None):
-    '''Native reference file function'''
-    # return cmds.file(path, o=True, f=True)
-    pass
-
-
-def get_reference_node(dcc_object_name):
-    '''
-    Return the scene reference_node associated to the given
-    *dcc_object_name*
-    '''
-    # dcc_object_node = rt.getNodeByName(dcc_object_name, exact=True)
-    # if not dcc_object_node:
-    #     return
-    # component_path = asset_const.COMPONENT_PATH
-    # for idx in range(1, rt.xrefs.getXRefFileCount()):
-    #     reference_node = rt.xrefs.getXrefFile(idx)
-    #     if reference_node.filename == component_path:
-    #         return reference_node
-    pass
-
-
-def remove_reference_node(reference_node):
-    '''Remove reference'''
-    # rt.delete(reference_node)
-    pass
-
-
-def unload_reference_node(reference_node):
-    '''Disable reference'''
-    # reference_node.disabled = True
-    pass
-
-
-def load_reference_node(reference_node):
-    '''Disable reference'''
-    # reference_node.disabled = False
-    pass
-
-
-def update_reference_path(reference_node, component_path):
-    '''Update the path of the given *reference_node* with the given
-    *component_path*'''
-    # reference_node.filename = component_path
+    # # Max has no concept of renaming a scene, always save
+    # save = True
+    #
+    # if save_path is None:
+    #     if context_id is not None and session is not None:
+    #         # Attempt to find out based on context
+    #         save_path, message = get_save_path(
+    #             context_id, session, extension='.max', temp=temp
+    #         )
+    #
+    #         if save_path is None:
+    #             return False, message
+    #     else:
+    #         return (
+    #             False,
+    #             'No context and/or session provided to generate save path',
+    #         )
+    #
+    # if save:
+    #     rt.savemaxFile(save_path, useNewFile=True)
+    #     message = 'Saved Max scene @ "{}"'.format(save_path)
+    # else:
+    #     raise Exception('Max scene rename not supported')
+    #
+    # result = save_path
+    #
+    # return result, message
     pass
 
 
@@ -766,9 +749,10 @@ def get_full_ftrack_asset_path(root_context_id, asset_path, session):
     )
     return full_path.replace("\\", "/")
 
+def get_temp_asset_build(root_context_id, asset_path, session):
+    '''Returns the temp asset build under the given *root_context_id*, basing the name on *asset_path* using *session*'''
 
-
-def get_fake_asset_build(root_context_id, asset_name, session):
+    asset_path = sanitize_asset_path(asset_path)
     parent_context = session.query(
         'Context where id is "{}"'.format(root_context_id)
     ).one()
@@ -782,6 +766,10 @@ def get_fake_asset_build(root_context_id, asset_name, session):
         'Project where id="{}"'.format(parent_context['project_id'])
     ).one()
 
+    # Split asset path in array parts
+    asset_path_parts = asset_path.split('/')
+
+    # Get Object type
     objecttype_assetbuild = session.query(
         'ObjectType where name="{}"'.format('Asset Build')
     ).one()
@@ -807,6 +795,7 @@ def get_fake_asset_build(root_context_id, asset_name, session):
             'Could not find a asset build type to be used when '
             'creating the Unreal project level asset build!'
         )
+    # Get status
     preferred_assetbuild_status = assetbuild_status = None
     for st in session.query(
         'SchemaStatus where schema_id="{0}"'.format(schema['id'])
@@ -822,11 +811,12 @@ def get_fake_asset_build(root_context_id, asset_name, session):
             'Could not find a asset build status to be used when '
             'creating the Unreal project level asset build!'
         )
+
     # Create an asset build
     child_context = session.create(
         'AssetBuild',
         {
-            'name': asset_name,
+            'name': asset_path_parts[-1],
             'parent': parent_context,
             'type': preferred_assetbuild_type or assetbuild_type,
             'status': preferred_assetbuild_status or assetbuild_status,
@@ -835,7 +825,7 @@ def get_fake_asset_build(root_context_id, asset_name, session):
     return child_context, statuses
 
 
-def push_ftrack_asset_path_to_server(root_context_id, asset_path, session):
+def push_asset_build_to_server(root_context_id, asset_path, session):
     '''
     Ensure that an asset build structure exists on the *asset_path* relative
     *root_context_id*
@@ -1261,9 +1251,3 @@ def assets_to_paths(assets):
     for asset in assets:
         result.append(asset.get_path_name())
     return result
-
-
-def disk_log(s):
-    with open('C:\\TEMP\\unreal_log.txt', 'a') as f:
-        f.write('[{}] {}\n'.format(datetime.datetime.now(), s))
-    print(s)

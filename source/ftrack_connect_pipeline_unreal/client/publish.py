@@ -71,29 +71,29 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
     def __init__(
         self,
         event_manager,
-        assets,
+        asset_paths,
         parent_asset_version_id=None,
         title=None,
-        immediate_run=False,
         parent=None,
     ):
         self._parent_asset_version_id = parent_asset_version_id
         super(UnrealQtBatchPublisherClientWidget, self).__init__(
             event_manager,
-            assets,
+            asset_paths,
             title=title,
-            immediate_run=immediate_run,
             parent=parent,
         )
         self.setWindowTitle(title or 'ftrack Unreal Asset Publisher')
 
     def _build_definition_selector(self):
+        '''Build Unreal definition selector widget'''
         return definition_selector.BatchDefinitionSelector(
             definition_title_filter_expression='^Asset Publisher$'
         )
 
     def _build_batch_publisher_widget(self):
-        return UnrealBatchPublisherWidget(self, self.items)
+        '''Build Unreal batch publisher widget'''
+        return UnrealBatchPublisherWidget(self, self.initial_items)
 
     def run(self):
         '''(Override) Run the publisher.'''
@@ -112,8 +112,9 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
 
 class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
     @property
-    def assets(self):
-        return self.items
+    def initial_asset_paths(self):
+        '''Return the list of initial Unreal asset paths passed to batch publisher widget from client'''
+        return self.initial_items
 
     def build(self):
         '''(Override) Build the widget, add project context selector'''
@@ -171,7 +172,7 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
             )
         )
 
-        for asset_path in sorted(self.assets):
+        for asset_path in sorted(self.initial_asset_paths):
             # Already processed?
             if not self.client.check_add_processed_items(str(asset_path)):
                 # Prevent duplicates and infinite loops
@@ -308,7 +309,8 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
         )
 
         # Create the asset build
-        asset_build = unreal_utils.push_ftrack_asset_path_to_server(
+        # TODO: do not push asset build here as it is will be done by the context plugin in runtime anyway
+        asset_build = unreal_utils.push_asset_build_to_server(
             root_context_id, full_ftrack_asset_path, self.session
         )
 
@@ -359,10 +361,6 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
             break
 
         return definition
-
-    def run_callback(self, item_widget, event):
-        '''(Override) Executed after an item has been publisher through event from pipieline,
-        enable publish sub dependencies.'''
 
 
 class UnrealAssetListWidget(BatchPublisherListBaseWidget):
@@ -417,10 +415,12 @@ class UnrealAssetWidget(ItemBaseWidget):
 
     @property
     def dependencies(self):
+        '''Return list of dependency asset paths'''
         return self._dependencies
 
     @property
     def dependencies_batch_publisher_widget(self):
+        '''Returns the batch publisher widget that manages the depenedencies'''
         return self._dependencies_batch_publisher_widget
 
     def __init__(
@@ -443,10 +443,12 @@ class UnrealAssetWidget(ItemBaseWidget):
         )
 
     def get_ident_widget(self):
+        '''Return the widget the presents the asset ident'''
         self._ident_widget = QtWidgets.QLabel()
         return self._ident_widget
 
     def get_context_widget(self):
+        '''Return the widget the presents the context selection'''
         self._context_widget = QtWidgets.QWidget()
         return self._context_widget
 
@@ -491,7 +493,7 @@ class UnrealAssetWidget(ItemBaseWidget):
             )
 
     def get_ident(self):
-        # Return asset name
+        '''Return the asset name as human readable item ident'''
         return self._asset_path.split('/')[-1] if self._asset_path else '?'
 
     def update_item(self, root_context_id):
@@ -500,3 +502,36 @@ class UnrealAssetWidget(ItemBaseWidget):
             self._dependencies_batch_publisher_widget.update_items(
                 root_context_id
             )
+
+    def run_callback(self, item_widget, event):
+        '''(Override) Executed after an item has been publisher through event from pipeline,
+        enable dependency asset info storage.'''
+        # Check for post finalizer data in event
+        # TODO: Extract asset info and store with item
+        user_data = None
+        for step in event.get('data', []):
+            for stage in step.get('result', []):
+                if stage.get('name') == 'post_finalizer':
+                    for plugin in stage.get('result', []):
+                        if (
+                            plugin.get('name')
+                            == 'unreal_dependencies_publisher_post_finalizer'
+                        ):
+                            if 'data' in plugin.get('user_data', {}):
+                                user_data = plugin['user_data']['data']
+                                break
+                if user_data:
+                    break
+            if user_data:
+                break
+        if not user_data:
+            self.logger.warning('No dependency data found in event payload!')
+            return
+        # Store in widget for later use
+        self.finalizer_user_data = user_data
+
+        self.logger.debug(
+            'Stored post finalized data for: {} [{}]'.format(
+                self.get_ident(), len(user_data)
+            )
+        )

@@ -149,25 +149,14 @@ def load_integration():
                 ]:
                     # Create with asset model
                     widget = ftrack_client(event_manager, asset_list_model)
-                elif widget_name == core_constants.BATCH_PUBLISHER:
-                    # TODO: Remove test/mock data
+                elif widget_name == qt_constants.BATCH_PUBLISHER_WIDGET:
                     widget = ftrack_client(
                         event_manager,
-                        event['data']['pipeline'].get('assets')
-                        or [
-                            "/Game/Unreal/ASSETS/WallE/rigging/rig/game",
-                            # "/Game/StarterContent/Blueprints/Blueprint_Effect_Fire",
-                            # "/Game/StarterContent/Props/SM_TableRound",
-                        ],
+                        event['data']['pipeline'].get('assets'),
                         parent_asset_version_id=event['data']['pipeline'].get(
                             'parent_asset_version_id'
-                        )
-                        or '948b423f-2cc1-431c-b962-8dbcee595550',
+                        ),
                         title=event['data']['pipeline'].get('title'),
-                        immediate_run=event['data']['pipeline'].get(
-                            'interactive'
-                        )
-                        is False,
                     )
                 else:
                     # Create without asset model
@@ -246,7 +235,7 @@ def load_integration():
         )
         widgets.append(
             (
-                core_constants.BATCH_PUBLISHER,
+                qt_constants.BATCH_PUBLISHER_WIDGET,
                 publish.UnrealQtBatchPublisherClientWidget,
                 'Batch publisher',
                 '',
@@ -317,12 +306,9 @@ def load_integration():
             ),
         )
 
-        # Install dummy event filter to prevent Houdini from crashing during widget
-        # build.
-        # QtCore.QCoreApplication.instance().installEventFilter(EventFilterWidget())
-
         unreal_utils.init_unreal()
 
+        # TODO: Remove this as we implement project state storage within snapshot asset infos
         if unreal_utils.get_project_state() is None:
             # A new project, so create the project state
             unreal_utils.save_project_state(['/Game'])
