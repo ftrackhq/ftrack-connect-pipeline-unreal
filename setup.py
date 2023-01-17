@@ -123,7 +123,7 @@ setup(
         'write_to_template': version_template,
         'version_scheme': 'post-release',
     },
-    python_requires='<3.8',
+    python_requires='<3.10',
     setup_requires=[
         'sphinx >= 1.8.5, < 4',
         'sphinx_rtd_theme >= 0.1.6, < 2',
