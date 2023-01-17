@@ -6,6 +6,9 @@ from ftrack_connect_pipeline_qt.client.asset_manager import (
 )
 import ftrack_connect_pipeline.constants as constants
 import ftrack_connect_pipeline_qt.constants as qt_constants
+from ftrack_connect_pipeline_qt.ui.asset_manager.base import (
+    AssetManagerBaseWidget,
+)
 import ftrack_connect_pipeline_unreal.constants as unreal_constants
 
 
@@ -29,3 +32,9 @@ class UnrealQtAssetManagerClientWidget(QtAssetManagerClientWidget):
 
     def get_theme_background_style(self):
         return 'unreal'
+
+
+class UnrealSnapshotAssetManagerWidget(AssetManagerBaseWidget):
+    def get_tab_name(self):
+        '''Return the name of the tab, if multiple tabs are used. Can be overridden by child'''
+        return 'Unreal Assets'
