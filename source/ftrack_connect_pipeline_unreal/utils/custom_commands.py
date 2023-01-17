@@ -13,11 +13,14 @@ import shutil
 
 import unreal
 
+import ftrack_api
+
 from ftrack_connect_pipeline.utils import (
     get_save_path,
 )
 
 from ftrack_connect_pipeline.utils import str_version
+from ftrack_connect_pipeline import constants as core_constants
 
 from ftrack_connect_pipeline_unreal.constants import asset as asset_const
 from ftrack_connect_pipeline_unreal.asset import UnrealFtrackObjectManager
@@ -301,8 +304,8 @@ def get_context_relative_path(session, ftrack_task):
     return relative_path
 
 
-def open_asset(path, options, session):
-    '''Open an Unreal level or asset pointed out by *path* - copy to local project content browser based on context passed
+def open_file(path, options, session):
+    '''Open an Unreal level or asset file pointed out by *path* - copy to local project content browser based on context passed
     with *options* using *session* object'''
 
     filename, extension = os.path.splitext(os.path.basename(path))
@@ -440,25 +443,37 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
                     )
                 )
                 continue
+
             # Bring it in
-            component_path = location.get_filesystem_path(component)
-            unreal_options = {'version_id': dependency_assetversion['id']}
-            logger_effective.debug(
-                'Importing dependency asset {} from: "{}"'.format(
-                    dependency_ident, component_path
-                )
+            run_event = ftrack_api.event.base.Event(
+                topic=core_constants.PIPELINE_RUN_PLUGIN_TOPIC,
+                data=asset_info[asset_const.ASSET_INFO_OPTIONS],
             )
-            path_import = open_asset(
-                component_path, unreal_options, event_manager.session
+
+            plugin_result_data = event_manager.session.event_hub.publish(
+                run_event, synchronous=True
             )
+
+            # component_path = location.get_filesystem_path(component)
+            # unreal_options = {'version_id': dependency_assetversion['id']}
+            # logger_effective.debug(
+            #     'Importing dependency asset {} from: "{}"'.format(
+            #         dependency_ident, component_path
+            #     )
+            # )
+            #
+            # path_import = open_file(
+            #     component_path, unreal_options, event_manager.session
+            # )
             add_message(
                 'Imported asset {} to: "{}", tracking asset.'.format(
-                    dependency_ident, path_import
+                    dependency_ident, plugin_result_data
                 )
             )
             # Store asset info
-            dcc_object.update(asset_info)
-            dcc_object.store()
+            dcc_object.create(dcc_object.name)
+            ftrack_object_manager.dcc_object = dcc_object
+
             # Import dependencies of this asset
             result.extend(
                 import_dependencies(
@@ -487,6 +502,7 @@ def import_file(asset_import_task):
         if len(asset_import_task.imported_object_paths or []) > 0
         else None
     )
+
 
 def save_file(save_path, context_id=None, session=None, temp=True, save=True):
     '''Save scene locally in temp or with the next version number based on latest version
@@ -748,6 +764,7 @@ def get_full_ftrack_asset_path(root_context_id, asset_path, session):
         *asset_path_sanitized.split('/')
     )
     return full_path.replace("\\", "/")
+
 
 def get_temp_asset_build(root_context_id, asset_path, session):
     '''Returns the temp asset build under the given *root_context_id*, basing the name on *asset_path* using *session*'''
