@@ -1021,7 +1021,7 @@ def render(
 
 
 def prepare_load_task(session, context_data, data, options):
-    '''Prepare loader import task'''
+    '''Prepare loader import task based on *data* and *context_data* supplied, based on *options*.'''
 
     paths_to_import = []
     for collector in data:
@@ -1029,22 +1029,27 @@ def prepare_load_task(session, context_data, data, options):
 
     component_path = paths_to_import[0]
 
+    # Check if it exists
+    if not os.path.exists(component_path):
+        raise Exception(
+            'The asset file does not exist: "{}"'.format(component_path)
+        )
+
     task = unreal.AssetImportTask()
 
     task.filename = component_path
 
-    asset_version_entity = session.query(
-        'AssetVersion where id={}'.format(context_data['version_id'])
-    ).first()
-    import_path = '/Game/{}{}'.format(
-        get_context_relative_path(session, asset_version_entity['task']),
-        context_data['asset_name'],
+    # Determine the folder to import to
+    selected_context_browser_path = (
+        unreal.EditorUtilityLibrary.get_current_content_browser_path()
     )
+    if selected_context_browser_path is not None:
+        import_path = selected_context_browser_path
+    else:
+        import_path = '/Game'
 
     task.destination_path = import_path.replace(' ', '_')
-    task.destination_name = os.path.splitext(os.path.basename(component_path))[
-        0
-    ]
+    task.destination_name = context_data['asset_name'].replace(' ', '_')
 
     task.replace_existing = options.get('ReplaceExisting', True)
     task.automated = options.get('Automated', True)
