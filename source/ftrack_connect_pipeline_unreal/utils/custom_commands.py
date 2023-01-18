@@ -18,6 +18,8 @@ from ftrack_connect_pipeline_unreal.constants import asset as asset_const
 
 logger = logging.getLogger(__name__)
 
+FTRACK_METADATA_TAG = "ftrack"
+FTRACK_SNAPSHOT_METADATA_TAG = "ftrack_snapshot"
 
 ### COMMON UTILS ###
 
@@ -188,15 +190,19 @@ def get_connected_nodes_from_dcc_object(dcc_object_name):
     id_value = param_dict.get(asset_const.ASSET_INFO_ID)
     for node_name in get_current_scene_objects():
         asset = get_asset_by_path(node_name)
-        ftrack_value = unreal.EditorAssetLibrary.get_metadata_tag(
-            asset, "ftrack"
-        )
-        if id_value == ftrack_value:
-            objects.append(node_name)
+        for metadata_tag in [
+            FTRACK_METADATA_TAG,
+            FTRACK_SNAPSHOT_METADATA_TAG,
+        ]:
+            ftrack_value = unreal.EditorAssetLibrary.get_metadata_tag(
+                asset, metadata_tag
+            )
+            if id_value == ftrack_value:
+                objects.append(node_name)
     return objects
 
 
-def get_asset_info(node_name):
+def get_asset_info(node_name, snapshot=False):
     '''Return the asset info from dcc object linked to asset path identified by *node_name*'''
     asset = get_asset_by_path(node_name)
     if asset is None:
@@ -204,7 +210,10 @@ def get_asset_info(node_name):
             '(get_asset_info) Cannot find asset by path: {}'.format(node_name)
         )
         return None, None
-    ftrack_value = unreal.EditorAssetLibrary.get_metadata_tag(asset, "ftrack")
+    ftrack_value = unreal.EditorAssetLibrary.get_metadata_tag(
+        asset,
+        FTRACK_METADATA_TAG if not snapshot else FTRACK_SNAPSHOT_METADATA_TAG,
+    )
     for dcc_object_node in get_ftrack_nodes():
         path_dcc_object_node = '{}{}{}.json'.format(
             asset_const.FTRACK_ROOT_PATH, os.sep, dcc_object_node

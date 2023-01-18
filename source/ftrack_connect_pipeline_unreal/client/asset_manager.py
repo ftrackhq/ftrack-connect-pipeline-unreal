@@ -28,20 +28,27 @@ class UnrealQtAssetManagerClientWidget(QtAssetManagerClientWidget):
     snapshot_assets = True
 
     def __init__(
-        self, event_manager, asset_list_model, snapshot_list_model, parent=None
+        self,
+        event_manager,
+        asset_list_model,
+        snapshot_list_model,
+        is_assembler=False,
+        multithreading_enabled=False,
+        parent=None,
     ):
         self._snapshot_list_model = snapshot_list_model
         super(UnrealQtAssetManagerClientWidget, self).__init__(
             event_manager,
             asset_list_model,
-            multithreading_enabled=False,
+            is_assembler=is_assembler,
+            multithreading_enabled=multithreading_enabled,
             parent=parent,
         )
         self.setWindowTitle('Unreal Pipeline Asset Manager')
         self.resize(350, 800)
 
     def get_theme_background_style(self):
-        return 'unreal'
+        return 'unreal' if not self.is_assembler else 'transparent'
 
     def get_snapshot_asset_widget_class(self):
         '''Return snapshot asset widget class'''
