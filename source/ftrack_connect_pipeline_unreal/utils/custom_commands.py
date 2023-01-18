@@ -1,6 +1,7 @@
 # :coding: utf-8
 # :copyright: Copyright (c) 2014-2022 ftrack
 import threading
+import traceback
 from functools import wraps
 import os
 import logging
@@ -8,13 +9,22 @@ import sys
 import subprocess
 import json
 import datetime
+import shutil
 
 import unreal
+
+import ftrack_api
 
 from ftrack_connect_pipeline.utils import (
     get_save_path,
 )
+
+from ftrack_connect_pipeline.utils import str_version
+from ftrack_connect_pipeline import constants as core_constants
+
 from ftrack_connect_pipeline_unreal.constants import asset as asset_const
+from ftrack_connect_pipeline_unreal.asset import UnrealFtrackObjectManager
+from ftrack_connect_pipeline_unreal.asset.dcc_object import UnrealDccObject
 
 logger = logging.getLogger(__name__)
 
@@ -303,10 +313,192 @@ def get_context_relative_path(session, ftrack_task):
     return relative_path
 
 
-def open_file(path, options=None):
-    '''Native open file function'''
-    # return cmds.file(path, o=True, f=True)
-    pass
+def open_file(path, options, session):
+    '''Open an Unreal level or asset file pointed out by *path* - copy to local project content browser based on context passed
+    with *options* using *session* object'''
+
+    filename, extension = os.path.splitext(os.path.basename(path))
+
+    version_id = options['version_id']
+
+    assetversion = session.query(
+        'AssetVersion where id={}'.format(version_id)
+    ).one()
+
+    asset = session.query(
+        'select name from Asset where id is "{}"'.format(
+            assetversion['asset_id']
+        )
+    ).first()
+
+    root_context_id = get_root_context_id()
+
+    if root_context_id is None:
+        logger.warning(
+            'Need project root context ID set to be able to evaluate Unreal asset content browser path'
+        )
+
+    found_root_context = False
+    link = []
+    parent_context = asset
+    while parent_context:
+        if parent_context['id'] == root_context_id:
+            found_root_context = True
+            break
+        link.insert(0, parent_context['name'])
+        if (
+            parent_context.entity_type == 'Project'
+            or not 'parent' in parent_context
+        ):
+            # Stop here
+            break
+        parent_context = session.query(
+            'select name from Context where id is "{}"'.format(
+                parent_context['parent']['id']
+            )
+        ).first()
+
+    root_content_dir = (
+        unreal.SystemLibrary.get_project_content_directory().replace(
+            '/', os.sep
+        )
+    )
+    if found_root_context:
+        # Import relative to project root context, remove Content start folder and cut off asset build part
+        filename = '{}{}'.format(asset['name'], extension)
+        import_path = os.path.join(root_content_dir, os.sep.join(link[1:-2]))
+    else:
+        # Import relative to project root
+        import_path = os.path.join(root_content_dir, os.sep.join(link))
+    import_path = os.path.join(import_path, filename)
+
+    parent = os.path.dirname(import_path)
+    if not os.path.exists(parent):
+        os.makedirs(parent)
+    shutil.copy(path, import_path)
+    return import_path
+
+
+def import_dependencies(version_id, event_manager, provided_logger=None):
+    '''Recursive import all dependencies of the given *version_id* using *session* object logging woth *provided_logger*. Returns a list
+    of messages about the import process.'''
+
+    result = []
+
+    logger_effective = provided_logger or logger
+
+    def add_message(message):
+        print(message)
+        logger_effective.info(message)
+        result.append(message)
+
+    assetversion = event_manager.session.query(
+        'AssetVersion where id="{}"'.format(version_id)
+    ).one()
+    ident = str_version(assetversion, by_task=False)
+
+    location = event_manager.session.pick_location()
+
+    dependencies = None
+    if 'ftrack-connect-pipeline-unreal' in list(
+        assetversion['metadata'].keys()
+    ):
+        metadata = json.loads(
+            assetversion['metadata']['ftrack-connect-pipeline-unreal']
+        )
+        if 'dependencies' in metadata:
+            dependencies = metadata.get('dependencies', [])
+    if not dependencies:
+        add_message('No dependencies found for {}'.format(ident))
+        return result
+
+    if not os.path.exists(asset_const.FTRACK_ROOT_PATH):
+        os.makedirs(asset_const.FTRACK_ROOT_PATH)
+
+    for dependency in dependencies:
+        dependency_ident = str(dependency)
+        try:
+            # Fetch the version
+            dependency_assetversion = event_manager.session.query(
+                'AssetVersion where id="{}"'.format(dependency['version'])
+            ).one()
+            dependency_ident = str_version(
+                dependency_assetversion, by_task=False
+            )
+            # Check if asset is already tracked in Unreal
+            asset_info = dependency['asset_info']
+            ftrack_object_manager = UnrealFtrackObjectManager(event_manager)
+            ftrack_object_manager.asset_info = asset_info
+            dcc_object = UnrealDccObject()
+            dcc_object.name = ftrack_object_manager._generate_dcc_object_name()
+            if dcc_object.exists():
+                # TODO: check if different version and align them properly
+                add_message(
+                    'Asset "{}" already tracked in Unreal'.format(
+                        dependency_ident
+                    )
+                )
+                continue
+            # Is it available in this location?
+            component = event_manager.session.query(
+                'Component where name=snapshot and version.id="{}"'.format(
+                    dependency_assetversion['id']
+                )
+            ).one()
+            if location.get_component_availability(component) != 100.0:
+                add_message(
+                    'Asset "{}" is not available in current location ({})'.format(
+                        dependency_ident, location['name']
+                    )
+                )
+                continue
+
+            # Bring it in
+            run_event = ftrack_api.event.base.Event(
+                topic=core_constants.PIPELINE_RUN_PLUGIN_TOPIC,
+                data=asset_info[asset_const.ASSET_INFO_OPTIONS],
+            )
+
+            plugin_result_data = event_manager.session.event_hub.publish(
+                run_event, synchronous=True
+            )
+
+            # component_path = location.get_filesystem_path(component)
+            # unreal_options = {'version_id': dependency_assetversion['id']}
+            # logger_effective.debug(
+            #     'Importing dependency asset {} from: "{}"'.format(
+            #         dependency_ident, component_path
+            #     )
+            # )
+            #
+            # path_import = open_file(
+            #     component_path, unreal_options, event_manager.session
+            # )
+            add_message(
+                'Imported asset {} to: "{}", tracking asset.'.format(
+                    dependency_ident, plugin_result_data
+                )
+            )
+            # Store asset info
+            dcc_object.create(dcc_object.name)
+            ftrack_object_manager.dcc_object = dcc_object
+
+            # Import dependencies of this asset
+            result.extend(
+                import_dependencies(
+                    dependency_assetversion['id'],
+                    event_manager,
+                    logger_effective,
+                )
+            )
+        except:
+            add_message(traceback.format_exc())
+            add_message(
+                'An exception occurred when attempting to import dependency {}'.format(
+                    dependency_ident
+                )
+            )
+    return result
 
 
 def import_file(asset_import_task):
