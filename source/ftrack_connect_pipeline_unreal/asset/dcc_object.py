@@ -81,7 +81,6 @@ class UnrealDccObject(DccObject):
 
         return self.name
 
-
     def exists(self):
         return self._name_exists(self.name)
 
@@ -155,9 +154,12 @@ class UnrealDccObject(DccObject):
 
         *objects* List of Unreal DAG objects
         '''
-        for object_path in objects:
-            object_ad = unreal_utils.get_asset_by_path(object_path)
+        for node_name in objects:
+            asset = unreal_utils.get_asset_by_path(node_name)
             unreal.EditorAssetLibrary.set_metadata_tag(
-                object_ad, 'ftrack', str(self.get(asset_const.ASSET_INFO_ID))
+                asset,
+                asset_const.NODE_METADATA_TAG
+                if self.is_snapshot
+                else asset_const.NODE_SNAPSHOT_METADATA_TAG,
+                str(self.get(asset_const.ASSET_INFO_ID)),
             )
-            # self[asset_const.ASSET_LINK].append(object_path)

@@ -28,9 +28,6 @@ from ftrack_connect_pipeline_unreal.asset.dcc_object import UnrealDccObject
 
 logger = logging.getLogger(__name__)
 
-FTRACK_METADATA_TAG = "ftrack"
-FTRACK_SNAPSHOT_METADATA_TAG = "ftrack_snapshot"
-
 ### COMMON UTILS ###
 
 
@@ -201,8 +198,8 @@ def get_connected_nodes_from_dcc_object(dcc_object_name):
     for node_name in get_current_scene_objects():
         asset = get_asset_by_path(node_name)
         for metadata_tag in [
-            FTRACK_METADATA_TAG,
-            FTRACK_SNAPSHOT_METADATA_TAG,
+            asset_const.NODE_METADATA_TAG,
+            asset_const.NODE_SNAPSHOT_METADATA_TAG,
         ]:
             ftrack_value = unreal.EditorAssetLibrary.get_metadata_tag(
                 asset, metadata_tag
@@ -214,6 +211,9 @@ def get_connected_nodes_from_dcc_object(dcc_object_name):
 
 def get_asset_info(node_name, snapshot=False):
     '''Return the asset info from dcc object linked to asset path identified by *node_name*'''
+
+    print('@@@ get_asset_info ', node_name, snapshot)
+
     asset = get_asset_by_path(node_name)
     if asset is None:
         logger.warning(
@@ -222,8 +222,12 @@ def get_asset_info(node_name, snapshot=False):
         return None, None
     ftrack_value = unreal.EditorAssetLibrary.get_metadata_tag(
         asset,
-        FTRACK_METADATA_TAG if not snapshot else FTRACK_SNAPSHOT_METADATA_TAG,
+        asset_const.NODE_METADATA_TAG
+        if not snapshot
+        else asset_const.NODE_SNAPSHOT_METADATA_TAG,
     )
+    print('@@@ ftrack_value: ', ftrack_value)
+
     for dcc_object_node in get_ftrack_nodes():
         path_dcc_object_node = '{}{}{}.json'.format(
             asset_const.FTRACK_ROOT_PATH, os.sep, dcc_object_node
@@ -432,13 +436,13 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
             dcc_object = UnrealDccObject()
             dcc_object.name = ftrack_object_manager._generate_dcc_object_name()
             if dcc_object.exists():
-                # TODO: check if different version and align them properly
                 add_message(
-                    'Asset "{}" already tracked in Unreal'.format(
+                    'Asset "{}" already tracked in Unreal, removing!'.format(
                         dependency_ident
                     )
                 )
-                continue
+                delete_ftrack_node(dcc_object.name)
+
             # Is it available in this location?
             component = event_manager.session.query(
                 'Component where name=snapshot and version.id="{}"'.format(
@@ -475,13 +479,14 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
             #     component_path, unreal_options, event_manager.session
             # )
             add_message(
-                'Imported asset {} to: "{}", tracking asset.'.format(
+                'Imported asset {} to: "{}".'.format(
                     dependency_ident, plugin_result_data
                 )
             )
             # Store asset info
-            dcc_object.create(dcc_object.name)
-            ftrack_object_manager.dcc_object = dcc_object
+            # dcc_object.create(dcc_object.name)
+            # Have it sync to disk
+            # ftrack_object_manager.dcc_object = dcc_object
 
             # Import dependencies of this asset
             result.extend(
@@ -773,6 +778,26 @@ def get_full_ftrack_asset_path(root_context_id, asset_path, session):
         *asset_path_sanitized.split('/')
     )
     return full_path.replace("\\", "/")
+
+
+def filesystem_asset_path_to_asset_path(full_asset_path):
+    '''Converts a full asset filesystem path to an asset path'''
+    root_content_dir = (
+        unreal.SystemLibrary.get_project_content_directory().replace(
+            '/', os.sep
+        )
+    )
+    if len(full_asset_path) > len(root_content_dir):
+        result = '{}Game{}{}'.format(
+            os.sep, os.sep, full_asset_path[len(root_content_dir) :]
+        )
+    else:
+        result = full_asset_path  # Already an asset path
+    return os.path.join(
+        os.path.dirname(result), os.path.splitext(os.path.basename(result))[0]
+    ).replace(
+        '\\', '/'
+    )  # Remove extension
 
 
 def get_temp_asset_build(root_context_id, asset_path, session):

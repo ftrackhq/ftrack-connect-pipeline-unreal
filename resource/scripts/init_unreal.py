@@ -166,6 +166,9 @@ def load_integration():
                         parent_asset_version_id=event['data']['pipeline'].get(
                             'parent_asset_version_id'
                         ),
+                        parent_asset=event['data']['pipeline'].get(
+                            'parent_asset'
+                        ),
                         title=event['data']['pipeline'].get('title'),
                     )
                 else:

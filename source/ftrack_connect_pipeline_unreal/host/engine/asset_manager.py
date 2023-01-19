@@ -86,6 +86,95 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
         return status, result
 
     @unreal_utils.run_in_main_thread
+    def select_asset(self, asset_info, options=None, plugin=None):
+        '''
+        Selects the given *asset_info* from the scene.
+        *options* can contain clear_selection to clear the selection before
+        select the given *asset_info*.
+        Returns status and result
+        '''
+        start_time = time.time()
+        status = core_constants.UNKNOWN_STATUS
+        result = []
+        message = None
+
+        plugin_type = core_constants.PLUGIN_AM_ACTION_TYPE
+        plugin_name = None
+        if plugin:
+            plugin_type = '{}.{}'.format('asset_manager', plugin['type'])
+            plugin_name = plugin.get('name')
+
+        result_data = {
+            'plugin_name': plugin_name,
+            'plugin_type': plugin_type,
+            'method': 'select_asset',
+            'status': status,
+            'result': result,
+            'execution_time': 0,
+            'message': message,
+        }
+
+        self.asset_info = asset_info
+        dcc_object = self.DccObject(
+            from_id=asset_info[asset_const.ASSET_INFO_ID]
+        )
+        self.dcc_object = dcc_object
+
+        asset_paths = []
+        try:
+            asset_paths = unreal_utils.get_connected_nodes_from_dcc_object(
+                dcc_object.name
+            )
+            unreal.EditorAssetLibrary.sync_browser_to_objects(asset_paths)
+            status = core_constants.SUCCESS_STATUS
+        except Exception as error:
+            message = str(
+                'Could not select the assets {}, error: {}'.format(
+                    str(asset_paths), error
+                )
+            )
+            self.logger.error(message)
+            status = core_constants.ERROR_STATUS
+
+        bool_status = core_constants.status_bool_mapping[status]
+        if not bool_status:
+            end_time = time.time()
+            total_time = end_time - start_time
+
+            result_data['status'] = status
+            result_data['result'] = result
+            result_data['execution_time'] = total_time
+            result_data['message'] = message
+
+            self._notify_client(plugin, result_data)
+            return status, result
+
+        end_time = time.time()
+        total_time = end_time - start_time
+
+        result_data['status'] = status
+        result_data['result'] = result
+        result_data['execution_time'] = total_time
+
+        self._notify_client(plugin, result_data)
+
+        return status, result
+
+    @unreal_utils.run_in_main_thread
+    def select_assets(self, assets, options=None, plugin=None):
+        '''
+        Returns status dictionary and results dictionary keyed by the id for
+        executing the :meth:`select_asset` for all the
+        :class:`~ftrack_connect_pipeline.asset.FtrackAssetInfo` in the given
+        *assets* list.
+
+        *assets*: List of :class:`~ftrack_connect_pipeline.asset.FtrackAssetInfo`
+        '''
+        return super(UnrealAssetManagerEngine, self).select_assets(
+            assets=assets, options=options, plugin=plugin
+        )
+
+    @unreal_utils.run_in_main_thread
     def change_version(self, asset_info, options, plugin=None):
         '''
         Returns the :const:`~ftrack_connnect_pipeline.constants.status` and the
@@ -110,32 +199,6 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
         # It's an import, so change version with the main method
         return super(UnrealAssetManagerEngine, self).change_version(
             asset_info=asset_info, options=options, plugin=plugin
-        )
-
-    @unreal_utils.run_in_main_thread
-    def select_asset(self, asset_info, options=None, plugin=None):
-        '''
-        Selects the given *asset_info* from the scene.
-        *options* can contain clear_selection to clear the selection before
-        select the given *asset_info*.
-        Returns status and result
-        '''
-        return super(UnrealAssetManagerEngine, self).select_asset(
-            asset_info=asset_info, options=options, plugin=plugin
-        )
-
-    @unreal_utils.run_in_main_thread
-    def select_assets(self, assets, options=None, plugin=None):
-        '''
-        Returns status dictionary and results dictionary keyed by the id for
-        executing the :meth:`select_asset` for all the
-        :class:`~ftrack_connect_pipeline.asset.FtrackAssetInfo` in the given
-        *assets* list.
-
-        *assets*: List of :class:`~ftrack_connect_pipeline.asset.FtrackAssetInfo`
-        '''
-        return super(UnrealAssetManagerEngine, self).select_assets(
-            assets=assets, options=options, plugin=plugin
         )
 
     @unreal_utils.run_in_main_thread
