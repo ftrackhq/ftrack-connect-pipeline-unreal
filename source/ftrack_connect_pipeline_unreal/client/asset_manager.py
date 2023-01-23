@@ -45,7 +45,7 @@ class UnrealQtAssetManagerClientWidget(QtAssetManagerClientWidget):
             parent=parent,
         )
         self.setWindowTitle('Unreal Pipeline Asset Manager')
-        self.resize(350, 800)
+        self.resize(600, 800)
 
     def get_theme_background_style(self):
         return 'unreal' if not self.is_assembler else 'transparent'

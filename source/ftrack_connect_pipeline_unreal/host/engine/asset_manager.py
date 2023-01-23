@@ -69,7 +69,7 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
             else:
                 status = core_constants.SUCCESS_STATUS
         else:
-            self.logger.debug("No assets in the scene")
+            self.logger.debug("No assets in the project")
             status = core_constants.SUCCESS_STATUS
 
         result = ftrack_asset_info_list

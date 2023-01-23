@@ -21,6 +21,7 @@ from ftrack_connect_pipeline.utils import (
 
 from ftrack_connect_pipeline.utils import str_version
 from ftrack_connect_pipeline import constants as core_constants
+from ftrack_connect_pipeline.asset.asset_info import FtrackAssetInfo
 
 from ftrack_connect_pipeline_unreal.constants import asset as asset_const
 from ftrack_connect_pipeline_unreal.asset import UnrealFtrackObjectManager
@@ -240,6 +241,22 @@ def get_asset_info(node_name, snapshot=False):
     return None, None
 
 
+def conditional_remove_metadata_tag(node_name, metadata_tag):
+    '''Remove *metadata_tag* from the given *node_name*, returns True if found'''
+    asset = get_asset_by_path(node_name)
+    ftrack_value = unreal.EditorAssetLibrary.get_metadata_tag(
+        asset, metadata_tag
+    )
+    if ftrack_value:
+        unreal.EditorAssetLibrary.remove_metadata_tag(asset, metadata_tag)
+        return True
+    else:
+        return False
+
+
+### SEQUENCER ###
+
+
 def get_all_sequences(as_names=True):
     '''
     Returns a list of all sequences names
@@ -416,18 +433,21 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
     if not os.path.exists(asset_const.FTRACK_ROOT_PATH):
         os.makedirs(asset_const.FTRACK_ROOT_PATH)
 
-    for dependency in dependencies:
-        dependency_ident = str(dependency)
+    for asset_info in [
+        FtrackAssetInfo(asset_info_raw) for asset_info_raw in dependencies
+    ]:
+        dependency_ident = str(asset_info)
         try:
             # Fetch the version
             dependency_assetversion = event_manager.session.query(
-                'AssetVersion where id="{}"'.format(dependency['version'])
+                'AssetVersion where id="{}"'.format(
+                    asset_info[asset_const.VERSION_ID]
+                )
             ).one()
             dependency_ident = str_version(
                 dependency_assetversion, by_task=False
             )
             # Check if asset is already tracked in Unreal
-            asset_info = dependency['asset_info']
             ftrack_object_manager = UnrealFtrackObjectManager(event_manager)
             ftrack_object_manager.asset_info = asset_info
             dcc_object = UnrealDccObject()
@@ -442,7 +462,7 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
 
             # Is it available in this location?
             component = event_manager.session.query(
-                'Component where name=snapshot and version.id="{}"'.format(
+                'Component where name=asset and version.id="{}"'.format(
                     dependency_assetversion['id']
                 )
             ).one()
@@ -460,9 +480,42 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
                 data=asset_info[asset_const.ASSET_INFO_OPTIONS],
             )
 
-            plugin_result_data = event_manager.session.event_hub.publish(
+            logger_effective.debug(
+                'Loading dependency, event: {}'.format(run_event)
+            )
+
+            plugin_result_dataset = event_manager.session.event_hub.publish(
                 run_event, synchronous=True
             )
+            # Did import go well?
+            if not plugin_result_dataset:
+                add_message(
+                    'Failed to import asset {} - no result'.format(
+                        dependency_ident
+                    )
+                )
+                continue
+            plugin_result_data = plugin_result_dataset[0]
+            if (
+                plugin_result_data.get('status')
+                != core_constants.SUCCESS_STATUS
+            ):
+                add_message(
+                    'Failed to import asset {}. Details: {}'.format(
+                        dependency_ident, plugin_result_data
+                    )
+                )
+                continue
+
+            logger_effective.debug(
+                'Dependency load result: {}'.format(plugin_result_data)
+            )
+
+            asset_filesystem_path = list(
+                list(plugin_result_data['result'].values())[0][
+                    'run_result'
+                ].values()
+            )[0]
 
             # component_path = location.get_filesystem_path(component)
             # unreal_options = {'version_id': dependency_assetversion['id']}
@@ -476,14 +529,30 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
             #     component_path, unreal_options, event_manager.session
             # )
             add_message(
-                'Imported asset {} to: "{}".'.format(
-                    dependency_ident, plugin_result_data
+                'Imported asset {} to: "{}", restoring modification date'.format(
+                    dependency_ident, asset_filesystem_path
                 )
             )
-            # Store asset info
-            # dcc_object.create(dcc_object.name)
-            # Have it sync to disk
-            # ftrack_object_manager.dcc_object = dcc_object
+            file_size = asset_info[asset_const.FILE_SIZE]
+            imported_file_size = os.path.getsize(asset_filesystem_path)
+            mode_date = asset_info[asset_const.MOD_DATE]
+            if file_size == imported_file_size:
+                # Same size, lets assume it is the same file
+                stat = os.stat(asset_filesystem_path)
+                os.utime(
+                    asset_filesystem_path, times=(stat.st_atime, mode_date)
+                )
+                add_message(
+                    'Restored file modification time: {} on asset: {} (size: {})'.format(
+                        mode_date, asset_filesystem_path, file_size
+                    )
+                )
+            else:
+                add_message(
+                    'Not restoring file modification time on asset {} - size differs! (at publish: {}, now: {})'.format(
+                        asset_filesystem_path, file_size, imported_file_size
+                    )
+                )
 
             # Import dependencies of this asset
             result.extend(

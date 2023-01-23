@@ -36,7 +36,7 @@ class UnrealLoaderImporterPlugin(
         return unreal_utils.get_current_scene_objects()
 
     def init_nodes(self, context_data=None, data=None, options=None):
-        super(UnrealLoaderImporterPlugin, self).init_nodes(
+        init_nodes_result = super(UnrealLoaderImporterPlugin, self).init_nodes(
             context_data=context_data, data=data, options=options
         )
         # Check if is snapshot
@@ -46,6 +46,7 @@ class UnrealLoaderImporterPlugin(
         if is_snapshot:
             # Set asset_info as is napshot.
             self.ftrack_object_manager.is_snapshot = True
+        return init_nodes_result
 
 
 class UnrealLoaderImporterPluginWidget(
