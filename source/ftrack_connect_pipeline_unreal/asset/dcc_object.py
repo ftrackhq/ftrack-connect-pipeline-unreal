@@ -158,8 +158,8 @@ class UnrealDccObject(DccObject):
             asset = unreal_utils.get_asset_by_path(node_name)
             unreal.EditorAssetLibrary.set_metadata_tag(
                 asset,
-                asset_const.NODE_METADATA_TAG
+                asset_const.NODE_SNAPSHOT_METADATA_TAG
                 if self.is_snapshot
-                else asset_const.NODE_SNAPSHOT_METADATA_TAG,
+                else asset_const.NODE_METADATA_TAG,
                 str(self.get(asset_const.ASSET_INFO_ID)),
             )

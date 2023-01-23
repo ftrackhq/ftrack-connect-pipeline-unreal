@@ -35,6 +35,7 @@ from ftrack_connect_pipeline_qt.ui.batch_publisher.base import (
 from ftrack_connect_pipeline_qt.utils import clear_layout, set_property
 
 import ftrack_connect_pipeline_unreal.constants as unreal_constants
+from ftrack_connect_pipeline_unreal.constants import asset as asset_const
 from ftrack_connect_pipeline_unreal.utils import (
     custom_commands as unreal_utils,
 )
@@ -85,6 +86,7 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
                 str(selected_asset.package_name)
                 for selected_asset in unreal.EditorUtilityLibrary.get_selected_asset_data()
             ]
+        # More than one asset selected?
         if len(asset_paths) == 0:
             dialog.ModalDialog(
                 None,
@@ -92,6 +94,14 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
                 message='No assets selected in Unreal content browser!',
             )
             return
+        elif len(asset_paths) == 1:
+            dialog.ModalDialog(
+                None,
+                title='Batch publisher',
+                message='Please use the standard publisher for single asset selections.',
+            )
+            return
+        # TODO: Check if there are levels in selection, abort if so
         super(UnrealQtBatchPublisherClientWidget, self).__init__(
             event_manager,
             asset_paths,
@@ -108,7 +118,12 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
 
     def _build_batch_publisher_widget(self):
         '''Build Unreal batch publisher widget'''
-        return UnrealBatchPublisherWidget(self, self.initial_items)
+        return UnrealBatchPublisherWidget(
+            self,
+            self.initial_items,
+            parent_asset_version_id=self._parent_asset_version_id,
+            parent_asset=self._parent_asset,
+        )
 
     def check_add_processed_items(self, asset_path):
         '''(Override) Check so asset is not the parent asset'''
@@ -242,7 +257,7 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
 
             # Check asset, if it exists on disk and is an uasset
             try:
-                absolute_asset_path = unreal_utils.determine_extension(
+                filesystem_asset_path = unreal_utils.determine_extension(
                     os.path.join(
                         root_content_dir,
                         asset_path.replace('/Game/', '').replace('/', os.sep),
@@ -255,8 +270,8 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
                 unrecognizeable_assets.append(asset_path)
                 continue
 
-            if not absolute_asset_path.endswith('.uasset'):
-                unrecognizeable_assets.append(absolute_asset_path)
+            if not filesystem_asset_path.endswith('.uasset'):
+                unrecognizeable_assets.append(filesystem_asset_path)
                 continue
 
             # Build the publisher definition
@@ -329,6 +344,7 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
             result.append(
                 (
                     asset_path,
+                    filesystem_asset_path,
                     definition_fragment,
                     dependencies,
                     dcc_object_name,
@@ -339,7 +355,7 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
         if len(unrecognizeable_assets) > 0:
             dialog.ModalDialog(
                 self,
-                message='Can not publish the following asset as they are not compatible with the chosen definition:\n\n{}'.format(
+                message='Can not publish the following asset as they are not found on disk or is compatible with the chosen definition:\n\n{}'.format(
                     '\n'.join(unrecognizeable_assets)
                 ),
             )
@@ -358,6 +374,7 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
         # Make sure asset parent context exists and inject it into definition
         (
             asset_path,
+            filesystem_asset_path,
             definition,
             dependencies,
             dcc_object_name,
@@ -457,17 +474,19 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
                     all_published = False
                     break
             if all_published:
+                all_items = self.item_list.items()
                 self.logger.info(
-                    'All assets have been published, tracking dependencies as list of asset infos on "{}"'.format(
-                        self.parent_asset
+                    'All assets have been published, tracking {} dependencies as list of asset infos on "{}"'.format(
+                        len(all_items), self.parent_asset
                     )
                 )
                 asset_infos = []
                 # Collect asset infos from all items
-                for item, item_widget in self.item_list.items():
+                for item, item_widget in all_items:
                     # Expand
                     (
                         asset_path,
+                        filesystem_asset_path,
                         definition,
                         dependencies,
                         dcc_object_name,
@@ -475,13 +494,17 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
                     ) = item
                     if item_widget.checked:
                         # This asset has been published, fetch its asset info
-                        asset_info = unreal_utils.get_asset_info(
+                        (
+                            unused_dcc_object_name,
+                            asset_info,
+                        ) = unreal_utils.get_asset_info(
                             asset_path, snapshot=True
                         )
                     else:
-                        # Use the previously stored asset info
+                        # Use the previously stored asset info, if any
                         asset_info = param_dict
-                    asset_infos.append(asset_info)
+                    if asset_info is not None:
+                        asset_infos.append(asset_info)
                 if len(asset_infos) > 0:
                     assetversion = self.session.query(
                         'AssetVersion where id is "{0}"'.format(
@@ -509,7 +532,7 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
                     self.session.commit()
                 else:
                     self.logger.debug(
-                        'No dependencies/asset infos to track for "{}"'.format(
+                        'No dependency asset infos to track for "{}"'.format(
                             self.parent_asset
                         )
                     )
@@ -530,6 +553,7 @@ class UnrealAssetListWidget(BatchPublisherListBaseWidget):
 
             (
                 asset_path,
+                filesystem_asset_path,
                 definition,
                 dependencies,
                 dcc_object_name,
@@ -551,6 +575,7 @@ class UnrealAssetListWidget(BatchPublisherListBaseWidget):
 
             item_widget.set_data(
                 asset_path,
+                filesystem_asset_path,
                 definition,
                 dependencies,
                 dcc_object_name,
@@ -627,7 +652,13 @@ class UnrealAssetWidget(ItemBaseWidget):
             self.content.layout().addStretch()
 
     def set_data(
-        self, asset_path, definition, dependencies, dcc_object_name, param_dict
+        self,
+        asset_path,
+        filesystem_asset_path,
+        definition,
+        dependencies,
+        dcc_object_name,
+        param_dict,
     ):
         '''(Override) Set data to be displayed in widget'''
         self._asset_path = asset_path
@@ -643,8 +674,30 @@ class UnrealAssetWidget(ItemBaseWidget):
             # Not tracked yet, that's fine
             do_publish = True
         else:
-            # TODO: Check if the asset has changed since last publish
+            # Check if the asset has changed since last publish
             do_publish = True
+            if os.path.exists(filesystem_asset_path):
+                file_size = os.path.getsize(filesystem_asset_path)
+                mod_date = os.path.getmtime(filesystem_asset_path)
+                print(
+                    '@@@ ({}) local size: {}, remote mode date: {}'.format(
+                        asset_path,
+                        mod_date,
+                        param_dict.get(asset_const.MOD_DATE),
+                    )
+                )
+                print(
+                    '@@@ ({}) local mod date: {}, remote size: {}'.format(
+                        asset_path,
+                        file_size,
+                        param_dict.get(asset_const.FILE_SIZE),
+                    )
+                )
+                if file_size != param_dict.get(
+                    asset_const.FILE_SIZE
+                ) or mod_date != param_dict.get(asset_const.MOD_DATE):
+                    do_publish = False
+
         self.set_checked(do_publish)
         if not do_publish:
             self.info_message = (
@@ -666,7 +719,6 @@ class UnrealAssetWidget(ItemBaseWidget):
         '''(Override) Executed after an item has been publisher through event from pipeline,
         enable dependency asset info storage.'''
         # Check for post finalizer data in event
-        print('@@@ UnrealAssetWidget.run_callback: event: {}'.format(event))
 
         # TODO: Extract asset info and store with item
 
@@ -675,8 +727,10 @@ class UnrealAssetWidget(ItemBaseWidget):
             for stage in step.get('result', []):
                 if stage.get('name') == 'finalizer':
                     for plugin in stage.get('result', []):
-                        if 'asset_version_id' in plugin:
-                            asset_version_id = plugin['asset_version_id']
+                        if 'asset_version_id' in plugin['result']:
+                            asset_version_id = plugin['result'][
+                                'asset_version_id'
+                            ]
                             break
                 elif stage.get('name') == 'post_finalizer':
                     for plugin in stage.get('result', []):
@@ -704,6 +758,6 @@ class UnrealAssetWidget(ItemBaseWidget):
             )
         self.logger.debug(
             'Stored post finalized data for "{}": user data: {}, asset version id: {}'.format(
-                self.get_ident(), len(user_data), asset_version_id
+                self.get_ident(), user_data, asset_version_id
             )
         )

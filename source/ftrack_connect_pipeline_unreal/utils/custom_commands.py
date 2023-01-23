@@ -212,8 +212,6 @@ def get_connected_nodes_from_dcc_object(dcc_object_name):
 def get_asset_info(node_name, snapshot=False):
     '''Return the asset info from dcc object linked to asset path identified by *node_name*'''
 
-    print('@@@ get_asset_info ', node_name, snapshot)
-
     asset = get_asset_by_path(node_name)
     if asset is None:
         logger.warning(
@@ -226,7 +224,6 @@ def get_asset_info(node_name, snapshot=False):
         if not snapshot
         else asset_const.NODE_SNAPSHOT_METADATA_TAG,
     )
-    print('@@@ ftrack_value: ', ftrack_value)
 
     for dcc_object_node in get_ftrack_nodes():
         path_dcc_object_node = '{}{}{}.json'.format(
@@ -997,10 +994,10 @@ def get_asset_dependencies(asset_path):
     # https://docs.unrealengine.com/4.27/en-US/PythonAPI/class/AssetRegistry.html?highlight=assetregistry#unreal.AssetRegistry.get_dependencies
     # Setup dependency options
     dep_options = unreal.AssetRegistryDependencyOptions(
-        include_soft_package_references=True,
+        include_soft_package_references=False,
         include_hard_package_references=True,
         include_searchable_names=False,
-        include_soft_management_references=True,
+        include_soft_management_references=False,
         include_hard_management_references=True,
     )
     # Start asset registry
