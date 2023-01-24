@@ -18,6 +18,7 @@ class UnrealQtChangeContextClientWidget(
         super(UnrealQtChangeContextClientWidget, self).__init__(
             event_manager, parent=parent
         )
+        # Make sure we become a proper window
         self.setWindowFlags(QtCore.Qt.Window)
 
     def show(self):

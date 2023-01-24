@@ -67,6 +67,7 @@ def load_integration():
 
     from ftrack_connect_pipeline_unreal import host as unreal_host
     from ftrack_connect_pipeline_unreal.client import (
+        open,
         load,
         asset_manager,
         publish,
@@ -93,8 +94,6 @@ def load_integration():
 
     created_widgets = dict()
 
-    host = None
-
     def get_ftrack_menu(menu_name='ftrack', submenu_name=None):
         '''Get the current ftrack menu, create it if does not exists.'''
         menus = unreal.ToolMenus.get()
@@ -115,6 +114,7 @@ def load_integration():
             _widget_class,
             unused_label,
             unused_image,
+            unused_add_to_menu,
         ) in widgets:
             if _widget_name == event['data']['pipeline']['name']:
                 widget_name = _widget_name
@@ -149,6 +149,15 @@ def load_integration():
                 ]:
                     # Create with asset model
                     widget = ftrack_client(event_manager, asset_list_model)
+                elif widget_name == qt_constants.BATCH_PUBLISHER_WIDGET:
+                    widget = ftrack_client(
+                        event_manager,
+                        event['data']['pipeline'].get('assets'),
+                        parent_asset_version_id=event['data']['pipeline'].get(
+                            'parent_asset_version_id'
+                        ),
+                        title=event['data']['pipeline'].get('title'),
+                    )
                 else:
                     # Create without asset model
                     widget = ftrack_client(event_manager)
@@ -190,10 +199,20 @@ def load_integration():
         widgets = list()
         widgets.append(
             (
+                core_constants.OPENER,
+                open.UnrealQtOpenerClientWidget,
+                'Open',
+                '',
+                True,
+            )
+        )
+        widgets.append(
+            (
                 qt_constants.ASSEMBLER_WIDGET,
                 load.UnrealQtAssemblerClientWidget,
                 'Assembler',
-                'greasePencilImport',
+                '',
+                True,
             )
         )
         widgets.append(
@@ -201,7 +220,8 @@ def load_integration():
                 core_constants.ASSET_MANAGER,
                 asset_manager.UnrealQtAssetManagerClientWidget,
                 'Asset Manager',
-                'volumeCube',
+                '',
+                True,
             )
         )
         widgets.append(
@@ -209,7 +229,17 @@ def load_integration():
                 core_constants.PUBLISHER,
                 publish.UnrealQtPublisherClientWidget,
                 'Publisher',
-                'greasePencilExport',
+                '',
+                True,
+            )
+        )
+        widgets.append(
+            (
+                qt_constants.BATCH_PUBLISHER_WIDGET,
+                publish.UnrealQtBatchPublisherClientWidget,
+                'Batch publisher',
+                '',
+                True,
             )
         )
         widgets.append(
@@ -217,7 +247,8 @@ def load_integration():
                 qt_constants.CHANGE_CONTEXT_WIDGET,
                 change_context.UnrealQtChangeContextClientWidget,
                 'Change context',
-                'refresh',
+                '',
+                True,
             )
         )
         widgets.append(
@@ -226,6 +257,7 @@ def load_integration():
                 log_viewer.UnrealQtLogViewerClientWidget,
                 'Log Viewer',
                 'zoom',
+                True,
             )
         )
         widgets.append(
@@ -233,7 +265,8 @@ def load_integration():
                 qt_constants.DOCUMENTATION_WIDGET,
                 documentation.QtDocumentationClientWidget,
                 'Documentation',
-                'SP_FileIcon',
+                '',
+                True,
             )
         )
 
@@ -243,7 +276,10 @@ def load_integration():
             if item == 'divider':
                 continue
 
-            widget_name, unused_widget_class, label, image = item
+            widget_name, unused_widget_class, label, image, add_to_menu = item
+
+            if not add_to_menu:
+                continue
 
             menu_entry = unreal.ToolMenuEntry(
                 widget_name, type=unreal.MultiBlockType.MENU_ENTRY
@@ -270,11 +306,12 @@ def load_integration():
             ),
         )
 
-        # Install dummy event filter to prevent Houdini from crashing during widget
-        # build.
-        # QtCore.QCoreApplication.instance().installEventFilter(EventFilterWidget())
-
         unreal_utils.init_unreal()
+
+        # TODO: Remove this as we implement project state storage within snapshot asset infos
+        if unreal_utils.get_project_state() is None:
+            # A new project, so create the project state
+            unreal_utils.save_project_state(['/Game'])
 
     initialise()
 

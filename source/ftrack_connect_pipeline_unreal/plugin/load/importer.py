@@ -35,6 +35,18 @@ class UnrealLoaderImporterPlugin(
     def get_current_objects(self):
         return unreal_utils.get_current_scene_objects()
 
+    def init_nodes(self, context_data=None, data=None, options=None):
+        super(UnrealLoaderImporterPlugin, self).init_nodes(
+            context_data=context_data, data=data, options=options
+        )
+        # Check if is snapshot
+        is_snapshot = self.asset_info.get(asset_const.COMPONENT_PATH).endswith(
+            ("uasset", "umap")
+        )
+        if is_snapshot:
+            # Set asset_info as is napshot.
+            self.ftrack_object_manager.is_snapshot = True
+
 
 class UnrealLoaderImporterPluginWidget(
     pluginWidget.LoaderImporterPluginWidget, UnrealBasePluginWidget

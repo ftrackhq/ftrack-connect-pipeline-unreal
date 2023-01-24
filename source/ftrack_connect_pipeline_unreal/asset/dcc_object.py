@@ -81,6 +81,10 @@ class UnrealDccObject(DccObject):
 
         return self.name
 
+
+    def exists(self):
+        return self._name_exists(self.name)
+
     def _name_exists(self, name):
         '''
         Return true if the given *name* as ftrack file exists in the project.
