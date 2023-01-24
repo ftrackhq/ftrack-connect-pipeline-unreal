@@ -679,20 +679,6 @@ class UnrealAssetWidget(ItemBaseWidget):
             if os.path.exists(filesystem_asset_path):
                 file_size = os.path.getsize(filesystem_asset_path)
                 mod_date = os.path.getmtime(filesystem_asset_path)
-                print(
-                    '@@@ ({}) local size: {}, remote mode date: {}'.format(
-                        asset_path,
-                        mod_date,
-                        param_dict.get(asset_const.MOD_DATE),
-                    )
-                )
-                print(
-                    '@@@ ({}) local mod date: {}, remote size: {}'.format(
-                        asset_path,
-                        file_size,
-                        param_dict.get(asset_const.FILE_SIZE),
-                    )
-                )
                 if file_size != param_dict.get(
                     asset_const.FILE_SIZE
                 ) or mod_date != param_dict.get(asset_const.MOD_DATE):
