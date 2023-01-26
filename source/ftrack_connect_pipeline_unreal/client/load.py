@@ -3,11 +3,14 @@
 
 from Qt import QtWidgets, QtCore
 
-from ftrack_connect_pipeline_unreal.constants.asset import modes as load_const
+
+from ftrack_connect_pipeline import constants as core_constants
+
 
 from ftrack_connect_pipeline_qt.client import load
-import ftrack_connect_pipeline.constants as constants
 import ftrack_connect_pipeline_qt.constants as qt_constants
+
+from ftrack_connect_pipeline_unreal.constants.asset import modes as load_const
 import ftrack_connect_pipeline_unreal.constants as unreal_constants
 from ftrack_connect_pipeline_unreal.client.asset_manager import (
     UnrealQtAssetManagerClientWidget,
@@ -18,7 +21,7 @@ class UnrealQtAssemblerClientWidget(load.QtAssemblerClientWidget):
     '''Unreal assembler dialog'''
 
     ui_types = [
-        constants.UI_TYPE,
+        core_constants.UI_TYPE,
         qt_constants.UI_TYPE,
         unreal_constants.UI_TYPE,
     ]
@@ -50,3 +53,18 @@ class UnrealQtAssemblerClientWidget(load.QtAssemblerClientWidget):
             is_assembler=True,
             multithreading_enabled=self.multithreading_enabled,
         )
+
+    def accept_component(self, component):
+        '''(Override) Allow snapshot components on published Unreal assets.'''
+        if component['name'].startswith(
+            core_constants.FTRACKREVIEW_COMPONENT_NAME
+        ):
+            return False
+        if component['name'] == core_constants.SNAPSHOT_COMPONENT_NAME:
+            asset = component['version']['asset']
+            if (
+                asset['type']['name'].lower()
+                != unreal_constants.UASSET_ASSET_TYPE
+            ):
+                return False
+        return True

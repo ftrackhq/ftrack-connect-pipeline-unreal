@@ -190,11 +190,12 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
         plugin information.
         '''
 
-        self.asset_info = asset_info
-        dcc_object = self.DccObject(
-            from_id=asset_info[asset_const.ASSET_INFO_ID]
-        )
-        self.dcc_object = dcc_object
+        # TODO: test and remove this if not neede
+        # self.asset_info = asset_info
+        # dcc_object = self.DccObject(
+        #     from_id=asset_info[asset_const.ASSET_INFO_ID]
+        # )
+        # self.dcc_object = dcc_object
 
         # It's an import, so change version with the main method
         return super(UnrealAssetManagerEngine, self).change_version(

@@ -339,13 +339,13 @@ def open_file(path, options, session):
 
     version_id = options['version_id']
 
-    assetversion = session.query(
+    asset_version = session.query(
         'AssetVersion where id={}'.format(version_id)
     ).one()
 
     asset = session.query(
         'select name from Asset where id is "{}"'.format(
-            assetversion['asset_id']
+            asset_version['asset_id']
         )
     ).first()
 
@@ -397,6 +397,19 @@ def open_file(path, options, session):
     return import_path
 
 
+def get_dependencies_from_asset_version(asset_version):
+    dependencies = None
+    if core_constants.PIPELINE_METADATA_KEY in list(
+        asset_version['metadata'].keys()
+    ):
+        metadata = json.loads(
+            asset_version['metadata'][core_constants.PIPELINE_METADATA_KEY]
+        )
+        if 'dependencies' in metadata:
+            dependencies = metadata.get('dependencies', [])
+    return dependencies
+
+
 def import_dependencies(version_id, event_manager, provided_logger=None):
     '''Recursive import all dependencies of the given *version_id* using *session* object logging woth *provided_logger*. Returns a list
     of messages about the import process.'''
@@ -410,22 +423,14 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
         logger_effective.info(message)
         result.append(message)
 
-    assetversion = event_manager.session.query(
+    asset_version = event_manager.session.query(
         'AssetVersion where id="{}"'.format(version_id)
     ).one()
-    ident = str_version(assetversion, by_task=False)
+    ident = str_version(asset_version, by_task=False)
 
     location = event_manager.session.pick_location()
 
-    dependencies = None
-    if 'ftrack-connect-pipeline-unreal' in list(
-        assetversion['metadata'].keys()
-    ):
-        metadata = json.loads(
-            assetversion['metadata']['ftrack-connect-pipeline-unreal']
-        )
-        if 'dependencies' in metadata:
-            dependencies = metadata.get('dependencies', [])
+    dependencies = get_dependencies_from_asset_version(asset_version)
     if not dependencies:
         add_message('No dependencies found for {}'.format(ident))
         return result
@@ -439,13 +444,13 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
         dependency_ident = str(asset_info)
         try:
             # Fetch the version
-            dependency_assetversion = event_manager.session.query(
+            dependency_asset_version = event_manager.session.query(
                 'AssetVersion where id="{}"'.format(
                     asset_info[asset_const.VERSION_ID]
                 )
             ).one()
             dependency_ident = str_version(
-                dependency_assetversion, by_task=False
+                dependency_asset_version, by_task=False
             )
             # Check if asset is already tracked in Unreal
             ftrack_object_manager = UnrealFtrackObjectManager(event_manager)
@@ -463,7 +468,7 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
             # Is it available in this location?
             component = event_manager.session.query(
                 'Component where name=asset and version.id="{}"'.format(
-                    dependency_assetversion['id']
+                    dependency_asset_version['id']
                 )
             ).one()
             if location.get_component_availability(component) != 100.0:
@@ -517,17 +522,6 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
                 ].values()
             )[0]
 
-            # component_path = location.get_filesystem_path(component)
-            # unreal_options = {'version_id': dependency_assetversion['id']}
-            # logger_effective.debug(
-            #     'Importing dependency asset {} from: "{}"'.format(
-            #         dependency_ident, component_path
-            #     )
-            # )
-            #
-            # path_import = open_file(
-            #     component_path, unreal_options, event_manager.session
-            # )
             add_message(
                 'Imported asset {} to: "{}", restoring modification date'.format(
                     dependency_ident, asset_filesystem_path
@@ -557,7 +551,7 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
             # Import dependencies of this asset
             result.extend(
                 import_dependencies(
-                    dependency_assetversion['id'],
+                    dependency_asset_version['id'],
                     event_manager,
                     logger_effective,
                 )
@@ -619,72 +613,6 @@ def save_file(save_path, context_id=None, session=None, temp=True, save=True):
 
 
 #### PROJECT LEVEL PUBLISH AND LOAD ####
-
-
-def save_project_state(package_paths, include_paths=None):
-    '''
-    Takes a snapshot of the given *package_paths* status recursively, with the
-    purpose os later identify which packages have been modified - i.e. are dirty
-    and needs to be published.
-
-    If *include_paths* is given, only these assets will be updated, merging the result
-    with the current project state for all other assets - keeping them dirty.
-
-    package_paths: Root folder from where to take the snapshot
-    '''
-
-    asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
-    registry_filter = unreal.ARFilter(
-        package_paths=package_paths, recursive_paths=True
-    )
-    cb_assets_data = asset_registry.get_assets(registry_filter)
-
-    os_content_folder = unreal.SystemLibrary.get_project_content_directory()
-    state_dictionary = {
-        "assets": [],
-        "date": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        "description": "Saved state of the Unreal project content folder",
-    }
-    for asset_data in cb_assets_data:
-        if not asset_data.is_u_asset():
-            continue
-        full_path = None
-        for ext in ['.uasset', '.umap']:
-            # TODO: Remove /Game/ from the path the correct way
-            p = os.path.join(
-                os_content_folder,
-                '{}{}'.format(str(asset_data.package_name)[6:], ext),
-            )
-            if os.path.exists(p):
-                full_path = p
-        if not full_path:
-            continue
-        disk_size = os.path.getsize(full_path)
-        mod_date = os.path.getmtime(full_path)
-        info = {
-            'package_name': str(asset_data.package_name),
-            'disk_size': disk_size,
-            'modified_date': mod_date,
-        }
-        state_dictionary['assets'].append(info)
-
-    if not os.path.exists(asset_const.FTRACK_ROOT_PATH):
-        logger.info(
-            'Creating FTRACK_ROOT_PATH: {}'.format(
-                asset_const.FTRACK_ROOT_PATH
-            )
-        )
-        os.makedirs(asset_const.FTRACK_ROOT_PATH)
-
-    state_path = os.path.join(
-        asset_const.FTRACK_ROOT_PATH, asset_const.PROJECT_STATE_FILE_NAME
-    )
-    with open(state_path, 'w') as f:
-        json.dump(state_dictionary, f, indent=4)
-        logger.debug(
-            'Successfully saved Unreal project state to: {}'.format(state_path)
-        )
-    return state_dictionary
 
 
 def get_project_state():
