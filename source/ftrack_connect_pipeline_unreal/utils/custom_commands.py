@@ -456,7 +456,7 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
             ftrack_object_manager = UnrealFtrackObjectManager(event_manager)
             ftrack_object_manager.asset_info = asset_info
             dcc_object = UnrealDccObject()
-            dcc_object.name = ftrack_object_manager._generate_dcc_object_name()
+            dcc_object.name = ftrack_object_manager.generate_dcc_object_name()
             if dcc_object.exists():
                 add_message(
                     'Asset "{}" already tracked in Unreal, removing!'.format(
@@ -467,8 +467,8 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
 
             # Is it available in this location?
             component = event_manager.session.query(
-                'Component where name=asset and version.id="{}"'.format(
-                    dependency_asset_version['id']
+                'Component where id="{}"'.format(
+                    asset_info[asset_const.COMPONENT_ID]
                 )
             ).one()
             if location.get_component_availability(component) != 100.0:
@@ -518,15 +518,20 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
 
             asset_filesystem_path = list(
                 list(plugin_result_data['result'].values())[0][
-                    'run_result'
+                    'result'
                 ].values()
             )[0]
 
             add_message(
-                'Imported asset {} to: "{}", restoring modification date'.format(
+                'Imported asset {} to: "{}"'.format(
                     dependency_ident, asset_filesystem_path
                 )
             )
+
+            # Have snapshot asset info synced to disk
+            ftrack_object_manager.dcc_object = dcc_object
+
+            # Align modification date so asset does not appear as out of sync
             file_size = asset_info[asset_const.FILE_SIZE]
             imported_file_size = os.path.getsize(asset_filesystem_path)
             mode_date = asset_info[asset_const.MOD_DATE]
@@ -1245,7 +1250,9 @@ def prepare_load_task(session, context_data, data, options):
 
     paths_to_import = []
     for collector in data:
-        paths_to_import.extend(collector['result'])
+        paths_to_import.append(
+            collector['result'].get(asset_const.COMPONENT_PATH)
+        )
 
     component_path = paths_to_import[0]
 

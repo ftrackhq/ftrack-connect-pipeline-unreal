@@ -95,7 +95,7 @@ class UnrealDccObject(DccObject):
 
     def from_asset_info_id(self, asset_info_id):
         '''
-        Checks unreal scene to get all the ftrackAssetNode objects. Compares them
+        Checks unreal project to get all the ftrackAssetNode objects. Compares them
         with the given *asset_info_id* and returns them if matches.
         '''
         ftrack_asset_nodes = unreal_utils.get_ftrack_nodes()

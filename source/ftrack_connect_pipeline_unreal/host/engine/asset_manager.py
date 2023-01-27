@@ -35,6 +35,23 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
         )
 
     @unreal_utils.run_in_main_thread
+    def load_asset(self, asset_info, options=None, plugin=None):
+        '''
+        Override load_asset method to deal with unloaded assets.
+        '''
+
+        self.asset_info = asset_info
+        dcc_object = self.DccObject(
+            from_id=asset_info[asset_const.ASSET_INFO_ID]
+        )
+        self.dcc_object = dcc_object
+
+        # It's an import, so load asset with the main method
+        return super(UnrealAssetManagerEngine, self).load_asset(
+            asset_info=asset_info, options=options, plugin=plugin
+        )
+
+    @unreal_utils.run_in_main_thread
     def discover_assets(self, assets=None, options=None, plugin=None):
         '''
         Discover all the assets in the scene:
@@ -199,23 +216,6 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
 
         # It's an import, so change version with the main method
         return super(UnrealAssetManagerEngine, self).change_version(
-            asset_info=asset_info, options=options, plugin=plugin
-        )
-
-    @unreal_utils.run_in_main_thread
-    def load_asset(self, asset_info, options=None, plugin=None):
-        '''
-        Override load_asset method to deal with unloaded assets.
-        '''
-
-        self.asset_info = asset_info
-        dcc_object = self.DccObject(
-            from_id=asset_info[asset_const.ASSET_INFO_ID]
-        )
-        self.dcc_object = dcc_object
-
-        # It's an import, so load asset with the main method
-        return super(UnrealAssetManagerEngine, self).load_asset(
             asset_info=asset_info, options=options, plugin=plugin
         )
 

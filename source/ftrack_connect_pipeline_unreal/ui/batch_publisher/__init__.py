@@ -206,7 +206,7 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
                     plugin['options'] = {}
 
                 if not 'dependencies' in plugin['name']:
-                    plugin['options']['asset'] = asset_path
+                    plugin['options']['collected_objects'] = [asset_path]
                 else:
                     # Resolve dependencies
                     dependencies = unreal_utils.get_asset_dependencies(

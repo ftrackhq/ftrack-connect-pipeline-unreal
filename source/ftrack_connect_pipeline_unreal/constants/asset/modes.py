@@ -6,8 +6,8 @@ from ftrack_connect_pipeline_unreal.utils import (
 )
 
 # Load Modes
-IMPORT_MODE = 'import'
 OPEN_MODE = 'open'
+IMPORT_MODE = 'import'
 
 LOAD_MODES = {
     OPEN_MODE: unreal_utils.open_file,
