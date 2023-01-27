@@ -397,7 +397,7 @@ def open_file(path, options, session):
     return import_path
 
 
-def get_dependencies_from_asset_version(asset_version):
+def get_dependencies_from_metadata(asset_version):
     dependencies = None
     if core_constants.PIPELINE_METADATA_KEY in list(
         asset_version['metadata'].keys()
@@ -430,7 +430,7 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
 
     location = event_manager.session.pick_location()
 
-    dependencies = get_dependencies_from_asset_version(asset_version)
+    dependencies = get_dependencies_from_metadata(asset_version)
     if not dependencies:
         add_message('No dependencies found for {}'.format(ident))
         return result
@@ -452,18 +452,6 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
             dependency_ident = str_version(
                 dependency_asset_version, by_task=False
             )
-            # Check if asset is already tracked in Unreal
-            ftrack_object_manager = UnrealFtrackObjectManager(event_manager)
-            ftrack_object_manager.asset_info = asset_info
-            dcc_object = UnrealDccObject()
-            dcc_object.name = ftrack_object_manager.generate_dcc_object_name()
-            if dcc_object.exists():
-                add_message(
-                    'Asset "{}" already tracked in Unreal, removing!'.format(
-                        dependency_ident
-                    )
-                )
-                delete_ftrack_node(dcc_object.name)
 
             # Is it available in this location?
             component = event_manager.session.query(
@@ -478,6 +466,19 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
                     )
                 )
                 continue
+
+            # Check if asset is already tracked in Unreal
+            ftrack_object_manager = UnrealFtrackObjectManager(event_manager)
+            ftrack_object_manager.asset_info = asset_info
+            dcc_object = UnrealDccObject()
+            dcc_object.name = ftrack_object_manager.generate_dcc_object_name()
+            if dcc_object.exists():
+                add_message(
+                    'Asset "{}" already tracked in Unreal, removing!'.format(
+                        dependency_ident
+                    )
+                )
+                delete_ftrack_node(dcc_object.name)
 
             # Bring it in
             run_event = ftrack_api.event.base.Event(
@@ -527,9 +528,6 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
                     dependency_ident, asset_filesystem_path
                 )
             )
-
-            # Have snapshot asset info synced to disk
-            ftrack_object_manager.dcc_object = dcc_object
 
             # Align modification date so asset does not appear as out of sync
             file_size = asset_info[asset_const.FILE_SIZE]
@@ -581,40 +579,6 @@ def import_file(asset_import_task):
         if len(asset_import_task.imported_object_paths or []) > 0
         else None
     )
-
-
-def save_file(save_path, context_id=None, session=None, temp=True, save=True):
-    '''Save scene locally in temp or with the next version number based on latest version
-    in ftrack.'''
-
-    # # Max has no concept of renaming a scene, always save
-    # save = True
-    #
-    # if save_path is None:
-    #     if context_id is not None and session is not None:
-    #         # Attempt to find out based on context
-    #         save_path, message = get_save_path(
-    #             context_id, session, extension='.max', temp=temp
-    #         )
-    #
-    #         if save_path is None:
-    #             return False, message
-    #     else:
-    #         return (
-    #             False,
-    #             'No context and/or session provided to generate save path',
-    #         )
-    #
-    # if save:
-    #     rt.savemaxFile(save_path, useNewFile=True)
-    #     message = 'Saved Max scene @ "{}"'.format(save_path)
-    # else:
-    #     raise Exception('Max scene rename not supported')
-    #
-    # result = save_path
-    #
-    # return result, message
-    pass
 
 
 #### PROJECT LEVEL PUBLISH AND LOAD ####
