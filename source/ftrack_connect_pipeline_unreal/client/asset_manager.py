@@ -1,16 +1,14 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2014-2022 ftrack
+# :copyright: Copyright (c) 2014-2023 ftrack
 
 from ftrack_connect_pipeline_qt.client.asset_manager import (
     QtAssetManagerClientWidget,
 )
 import ftrack_connect_pipeline.constants as constants
 import ftrack_connect_pipeline_qt.constants as qt_constants
-from ftrack_connect_pipeline_qt.ui.asset_manager.base import (
-    AssetManagerBaseWidget,
-)
-from ftrack_connect_pipeline_qt.ui.asset_manager.asset_manager import (
-    AssetWidget,
+from ftrack_connect_pipeline_unreal.ui.asset_manager import (
+    UnrealAssetManagerWidget,
+    UnrealSnapshotAssetWidget,
 )
 
 import ftrack_connect_pipeline_unreal.constants as unreal_constants
@@ -58,6 +56,6 @@ class UnrealQtAssetManagerClientWidget(QtAssetManagerClientWidget):
         '''Return snapshot list model'''
         return self._snapshot_list_model
 
-
-class UnrealSnapshotAssetWidget(AssetWidget):
-    '''Unreal snapshot asset widget, adjust rendering with indentation'''
+    def build_asset_manager_widget(self):
+        '''Build the asset manager widget, can be overidden by DCC'''
+        return UnrealAssetManagerWidget(self, self._asset_list_model)

@@ -248,7 +248,7 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
             )
 
         # Store and present
-        self.set_items(result, UnrealAssetListWidget)
+        self.set_items(result, UnrealBatchPublisherAssetListWidget)
 
     def update_items(self, root_context_id):
         '''(Override) Update list of items to publish'''
@@ -412,7 +412,12 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
             )
 
 
-class UnrealAssetListWidget(BatchPublisherListBaseWidget):
+class UnrealBatchPublisherAssetListWidget(BatchPublisherListBaseWidget):
+    def __init__(self, batch_publisher_widget, parent=None):
+        super(UnrealBatchPublisherAssetListWidget, self).__init__(
+            batch_publisher_widget, UnrealAssetWidget, parent=parent
+        )
+
     def rebuild(self):
         '''Add all assets(components) again from model.'''
         clear_layout(self.layout())
@@ -429,7 +434,7 @@ class UnrealAssetListWidget(BatchPublisherListBaseWidget):
             ) = self.model.data(index)
 
             # Build item widget
-            item_widget = UnrealAssetWidget(
+            item_widget = self.item_widget_class(
                 index,
                 self._batch_publisher_widget,
                 dependencies,
