@@ -3,7 +3,7 @@
 
 import time
 import unreal
-
+import os
 
 from ftrack_connect_pipeline import constants as core_constants
 from ftrack_connect_pipeline.host.engine import AssetManagerEngine
@@ -40,6 +40,7 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
         Override load_asset method to deal with unloaded assets.
         '''
 
+        # TODO: Check if neccessary or can be moved to core
         self.asset_info = asset_info
         dcc_object = self.DccObject(
             from_id=asset_info[asset_const.ASSET_INFO_ID]
@@ -142,6 +143,10 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
             asset_paths = unreal_utils.get_connected_nodes_from_dcc_object(
                 dcc_object.name
             )
+            if not asset_paths:
+                raise Exception(
+                    'No Unreal asset found for {}'.format(dcc_object.name)
+                )
             unreal.EditorAssetLibrary.sync_browser_to_objects(asset_paths)
             status = core_constants.SUCCESS_STATUS
         except Exception as error:
@@ -206,13 +211,6 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
         *plugin* : Default None. Plugin definition, a dictionary with the
         plugin information.
         '''
-
-        # TODO: test and remove this if not neede
-        # self.asset_info = asset_info
-        # dcc_object = self.DccObject(
-        #     from_id=asset_info[asset_const.ASSET_INFO_ID]
-        # )
-        # self.dcc_object = dcc_object
 
         # It's an import, so change version with the main method
         return super(UnrealAssetManagerEngine, self).change_version(

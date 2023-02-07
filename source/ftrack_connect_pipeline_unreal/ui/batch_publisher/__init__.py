@@ -144,15 +144,13 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
 
             # Check asset, if it exists on disk and is an uasset
             try:
-                filesystem_asset_path = unreal_utils.determine_extension(
-                    os.path.join(
-                        root_content_dir,
-                        asset_path.replace('/Game/', '').replace('/', os.sep),
+                filesystem_asset_path = (
+                    unreal_utils.asset_path_to_filesystem_path(
+                        asset_path, root_content_dir=root_content_dir
                     )
                 )
             except Exception as e:
                 self.logger.exception(e)
-                import traceback
 
                 unrecognizeable_assets.append(asset_path)
                 continue
@@ -258,6 +256,10 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
 
     def prepare_run_definition(self, item):
         '''(Override) Called before *definition* is executed.'''
+
+        # Raise batch publisher dialog as DCC might have come ontop of it
+        self.client.activateWindow()
+
         # Make sure asset parent context exists and inject it into definition
         (
             asset_path,
@@ -527,7 +529,7 @@ class UnrealAssetWidget(ItemBaseWidget):
     def set_data(
         self,
         asset_path,
-        filesystem_asset_path,
+        asset_filesystem_path,
         definition,
         dependencies,
         dcc_object_name,
@@ -542,26 +544,25 @@ class UnrealAssetWidget(ItemBaseWidget):
             self._dependencies_batch_publisher_widget.build_items(definition)
         self._widget_factory.batch_id = self.item_id
         # Determine if needs publish
-        do_publish = False
-        if dcc_object_name is None:
-            # Not tracked yet, that's fine
-            do_publish = True
-        else:
+        do_publish = True
+        if dcc_object_name is not None:
+            do_publish = False
             # Check if the asset has changed since last publish
-            do_publish = True
-            if os.path.exists(filesystem_asset_path):
-                file_size = os.path.getsize(filesystem_asset_path)
-                mod_date = os.path.getmtime(filesystem_asset_path)
+            if os.path.exists(asset_filesystem_path):
+                file_size = os.path.getsize(asset_filesystem_path)
+                mod_date = os.path.getmtime(asset_filesystem_path)
                 if file_size != param_dict.get(
                     asset_const.FILE_SIZE
                 ) or mod_date != param_dict.get(asset_const.MOD_DATE):
-                    do_publish = False
+                    do_publish = True
 
         self.set_checked(do_publish)
         if not do_publish:
-            self.info_message = (
-                "Asset is up to date and has not changed since last publish"
+            self.setToolTip(
+                'Asset is up to date and has not changed since last publish'
             )
+        elif dcc_object_name is not None:
+            self.info_message = '<html><i>Asset has been modified since last publish</i></html>'
 
     def get_ident(self):
         '''Return the asset name as human readable item ident'''

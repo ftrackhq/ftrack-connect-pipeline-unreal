@@ -249,6 +249,8 @@ def conditional_remove_metadata_tag(node_name, metadata_tag):
     )
     if ftrack_value:
         unreal.EditorAssetLibrary.remove_metadata_tag(asset, metadata_tag)
+        # Have Unreal save the asset as it has been modified
+        unreal.EditorAssetLibrary.save_asset(node_name)
         return True
     else:
         return False
@@ -262,7 +264,7 @@ def get_all_sequences(as_names=True):
     Returns a list of all sequences names
     '''
     result = []
-    actors = unreal.EditorLevelLibrary.get_all_level_actors()
+    actors = unreal.EditorActorSubsystem.get_all_level_actors()
     for actor in actors:
         if actor.static_class() == unreal.LevelSequenceActor.static_class():
             seq = actor.load_sequence()
@@ -522,34 +524,15 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
                     'result'
                 ].values()
             )[0]
+            imported_asset_info = list(plugin_result_data['result'].values())[
+                0
+            ]['asset_info']
 
             add_message(
                 'Imported asset {} to: "{}"'.format(
                     dependency_ident, asset_filesystem_path
                 )
             )
-
-            # Align modification date so asset does not appear as out of sync
-            file_size = asset_info[asset_const.FILE_SIZE]
-            imported_file_size = os.path.getsize(asset_filesystem_path)
-            mode_date = asset_info[asset_const.MOD_DATE]
-            if file_size == imported_file_size:
-                # Same size, lets assume it is the same file
-                stat = os.stat(asset_filesystem_path)
-                os.utime(
-                    asset_filesystem_path, times=(stat.st_atime, mode_date)
-                )
-                add_message(
-                    'Restored file modification time: {} on asset: {} (size: {})'.format(
-                        mode_date, asset_filesystem_path, file_size
-                    )
-                )
-            else:
-                add_message(
-                    'Not restoring file modification time on asset {} - size differs! (at publish: {}, now: {})'.format(
-                        asset_filesystem_path, file_size, imported_file_size
-                    )
-                )
 
             # Import dependencies of this asset
             result.extend(
@@ -763,6 +746,27 @@ def filesystem_asset_path_to_asset_path(full_asset_path):
     )  # Remove extension
 
 
+def asset_path_to_filesystem_path(asset_path, root_content_dir=None):
+    '''Converts *asset_path* to a full absolute asset filesystem path. Use the provided *root_content_dir*.'''
+    if root_content_dir is None:
+        root_content_dir = (
+            unreal.SystemLibrary.get_project_content_directory().replace(
+                '/', os.sep
+            )
+        )
+    if asset_path.lower().startswith('/game/'):
+        asset_path = asset_path[6:]  # Remove /Game/ prefix
+    path = os.path.join(root_content_dir, asset_path.replace('/', os.sep))
+    # Probe our way to finding out the extension as we can't tell from the asset path
+    for ext in ['', '.uasset', '.umap']:
+        result = '{}{}'.format(path, ext)
+        if os.path.exists(result):
+            return result
+    raise Exception(
+        'Could not determine asset "{}" files extension on disk!'.format(path)
+    )
+
+
 def get_temp_asset_build(root_context_id, asset_path, session):
     '''Returns the temp asset build under the given *root_context_id*, basing the name on *asset_path* using *session*'''
 
@@ -954,46 +958,127 @@ def push_asset_build_to_server(root_context_id, asset_path, session):
     return parent_context
 
 
-def get_asset_dependencies(asset_path):
-    '''Return a list of asset dependencies for the given *asset_path*.'''
+def get_asset_dependencies(
+    parent_asset_path,
+    recursive=False,
+    include_hard_management_references=True,
+    include_hard_package_references=True,
+    include_searchable_names=False,
+    include_soft_management_references=False,
+    include_soft_package_references=False,
+):
+    '''Return a list of asset dependencies for the given *asset_path*. If *recursive* is True, return all dependencies
+    recursively, otherwise only return direct dependencies.'''
 
     # https://docs.unrealengine.com/4.27/en-US/PythonAPI/class/AssetRegistry.html?highlight=assetregistry#unreal.AssetRegistry.get_dependencies
     # Setup dependency options
     dep_options = unreal.AssetRegistryDependencyOptions(
-        include_soft_package_references=False,
-        include_hard_package_references=True,
-        include_searchable_names=False,
-        include_soft_management_references=False,
-        include_hard_management_references=True,
+        include_hard_management_references=include_hard_management_references,
+        include_hard_package_references=include_hard_package_references,
+        include_searchable_names=include_searchable_names,
+        include_soft_management_references=include_soft_management_references,
+        include_soft_package_references=include_soft_package_references,
     )
     # Start asset registry
     asset_reg = unreal.AssetRegistryHelpers.get_asset_registry()
-    # Get dependencies for the given asset
-    dependencies = [
-        str(dep)
-        for dep in asset_reg.get_dependencies(
-            asset_path.split('.')[0], dep_options
-        )
-        or []
-    ]
 
-    # Filter out only dependencies that are in Game
-    game_dependencies = list(
-        filter(lambda x: x.startswith("/Game"), dependencies)
+    result = []
+
+    def conditional_add_asset_path(asset_path):
+        asset_path = os.path.splitext(asset_path)[0]
+        if asset_path.lower().startswith('/game/') and not (
+            asset_path == parent_asset_path or asset_path in result
+        ):
+            result.append(asset_path)
+
+    def _get_asset_dependencies(asset_path):
+
+        if asset_path in result:
+            return []
+
+        # Get dependencies for the given asset
+        dependencies = [
+            str(dep)
+            for dep in (
+                asset_reg.get_dependencies(
+                    asset_path.split('.')[0], dep_options
+                )
+                or []
+            )
+        ]
+
+        # Filter out only dependencies that are in Game
+        game_dependencies = []
+
+        for dep in dependencies:
+            conditional_add_asset_path(dep)
+
+        result.extend(game_dependencies)
+
+        if recursive:
+            # Get dependencies for all dependencies
+            for dep in game_dependencies:
+                _get_asset_dependencies(dep)
+
+    _get_asset_dependencies(parent_asset_path)
+
+    return result
+
+
+def get_level_dependencies(recursive=False):
+    '''Return a list of asset dependencies for the current level. If *recursive* is True, return asset dependencies.'''
+
+    level_path = str(
+        unreal.EditorLevelLibrary.get_editor_world().get_path_name()
     )
 
-    return game_dependencies
+    result = []
 
+    def conditional_add_asset_path(asset_path):
+        asset_path = os.path.splitext(asset_path)[0]
+        # Make sure it is a game asset and not already resolved
+        if asset_path.lower().startswith('/game/') and not (
+            asset_path == level_path or asset_path in result
+        ):
+            result.append(asset_path)
+            if recursive:
+                for dep in get_asset_dependencies(asset_path):
+                    conditional_add_asset_path(dep)
 
-def determine_extension(path):
-    '''Probe the file extension of the given asset path.'''
-    for ext in ['', '.uasset', '.umap']:
-        result = '{}{}'.format(path, ext)
-        if os.path.exists(result):
-            return result
-    raise Exception(
-        'Could not determine asset "{}" files extension on disk!'.format(path)
-    )
+    for actor in unreal.EditorLevelLibrary.get_all_level_actors():
+
+        try:  # Do not stumble on exceptions here
+            if actor.static_class() == unreal.SkeletalMeshActor.static_class():
+                skeletal_mesh_component = actor.skeletal_mesh_component
+                if skeletal_mesh_component:
+                    skeletal_mesh_asset = (
+                        skeletal_mesh_component.skeletal_mesh_asset
+                    )
+                    if skeletal_mesh_asset:
+                        conditional_add_asset_path(
+                            skeletal_mesh_asset.get_path_name()
+                        )
+                    skinned_asset_asset = skeletal_mesh_component.skinned_asset
+                    if skinned_asset_asset:
+                        conditional_add_asset_path(
+                            skinned_asset_asset.get_path_name()
+                        )
+            elif (
+                actor.static_class()
+                == unreal.LevelSequenceActor.static_class()
+            ):
+                sequence_asset = actor.load_sequence()
+                if sequence_asset:
+                    conditional_add_asset_path(sequence_asset.get_path_name())
+            elif actor.static_class() == unreal.Actor.static_class():
+                # Probably a blueprint
+                cls = actor.get_class()
+                conditional_add_asset_path(cls.get_path_name())
+        except Exception as e:
+            logger.error(e)
+            print(traceback.format_exc())
+
+    return result
 
 
 ### TIME OPERATIONS ###

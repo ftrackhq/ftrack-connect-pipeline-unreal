@@ -1,7 +1,7 @@
 # :coding: utf-8
 # :copyright: Copyright (c) 2014-2023 ftrack
 import os
-import unreal
+import logging
 
 from Qt import QtWidgets, QtCore
 
@@ -17,6 +17,9 @@ from ftrack_connect_pipeline_qt.ui.asset_manager.base import (
 from ftrack_connect_pipeline_unreal.utils import (
     custom_commands as unreal_utils,
 )
+from ftrack_connect_pipeline_unreal.constants import asset as asset_const
+
+logger = logging.getLogger(__name__)
 
 
 class UnrealAssetManagerWidget(AssetManagerWidget):
@@ -67,12 +70,12 @@ class UnrealSnapshotAssetListContainerWidget(AssetListContainerWidget):
     def pre_build(self):
         super(UnrealSnapshotAssetListContainerWidget, self).pre_build()
         self._header_widget = QtWidgets.QWidget()
-        self._header_widget.setLayout(QtWidgets.QVBoxLayout())
+        self._header_widget.setLayout(QtWidgets.QHBoxLayout())
         self._header_widget.layout().setContentsMargins(5, 0, 5, 0)
         self._header_widget.layout().setSpacing(0)
 
         label_widget = QtWidgets.QLabel('Unreal assets:')
-        self._header_widget.layout().addWidget(label_widget)
+        self._header_widget.layout().addWidget(label_widget, 10)
 
         self.cb_show_all = QtWidgets.QCheckBox('Show all')
         self.cb_show_all.setToolTip(
@@ -104,14 +107,11 @@ class UnrealAssetListContainerWidget(AssetListContainerWidget):
     def pre_build(self):
         super(UnrealAssetListContainerWidget, self).pre_build()
         self._header_widget = QtWidgets.QWidget()
-        self._header_widget.setLayout(QtWidgets.QVBoxLayout())
+        self._header_widget.setLayout(QtWidgets.QHBoxLayout())
         self._header_widget.layout().setContentsMargins(5, 0, 5, 0)
         self._header_widget.layout().setSpacing(0)
 
-        label_widget = QtWidgets.QLabel('ftrack assets:')
-        self._header_widget.layout().addWidget(label_widget)
-
-        # Add filler to align
+        # Add spacer
         self._header_widget.layout().addWidget(QtWidgets.QLabel(''))
 
 
@@ -137,39 +137,43 @@ class UnrealAssetManagerSnapshotListWidget(AssetManagerListWidget):
             model, asset_widget_class, docked=docked, parent=parent
         )
 
-    def rebuild(
-        self,
-    ):
-        '''Clear widget and add all assets again from model plus untracked dependencies'''
+    def rebuild(self, model_data_change=None, add=False):
+        '''(Override) Also add untracked dependencies'''
+        # Only rebuild if rows has been inserted
+        if model_data_change and model_data_change != 'rowsInserted':
+            # Don't bother add untracked dependencies if not adding new rows
+            return super(UnrealAssetManagerSnapshotListWidget, self).rebuild(
+                model_data_change=model_data_change
+            )
+
         asset_widgets = super(
             UnrealAssetManagerSnapshotListWidget, self
-        ).rebuild(add=False)
+        ).rebuild(model_data_change=model_data_change, add=False)
 
-        # Query level or all dependencies
-        if self.show_all:
+        if not self.show_all:
+            # Fetch from level and only display those
+            assets = unreal_utils.get_level_dependencies(recursive=True)
+            # Remove tracked assets that are not in the level
+            asset_widgets_remove = []
+            for asset_widget in asset_widgets:
+                if asset_widget.asset_path not in assets:
+                    # Remove widget - not in level
+                    asset_widgets_remove.append(asset_widget)
+                else:
+                    # Remove from untracked assets
+                    assets.remove(asset_widget.asset_path)
+            for asset_widget in asset_widgets_remove:
+                asset_widgets.remove(asset_widget)
+        else:
             # Fetch all assets in Unreal project
             assets = [
                 os.path.splitext(ass)[0]
                 for ass in unreal_utils.get_current_scene_objects()
             ]
-
-        else:
-            # Fetch from level
-            level_path = str(
-                unreal.EditorLevelLibrary.get_editor_world().get_path_name()
-            )
-            assets = unreal_utils.get_asset_dependencies(level_path)
-            # Hide the tracked assets that are not part of level
-            asset_widgets_remove = []
+            # Remove already tracked assets
             for asset_widget in asset_widgets:
-                found = False
-                for asset_path in assets:
-                    if asset_widget.asset_path.lower() == asset_path.lower():
-                        found = True
-                if not found:
-                    asset_widgets_remove.append(asset_widget)
-            for asset_widget in asset_widgets_remove:
-                asset_widgets.remove(asset_widget)
+                if asset_widget.asset_path in assets:
+                    assets.remove(asset_widget.asset_path)
 
         if len(assets) > 0:
             # Create and append to widgets
@@ -219,7 +223,44 @@ class UnrealAssetWidget(AssetWidget):
 class UnrealSnapshotAssetWidget(UnrealAssetWidget):
     '''Unreal snapshot asset widget, adjust rendering with indentation'''
 
-    # TODO: Color the widget blue if updated and needs to be published
+    def set_asset_info(self, asset_info):
+        '''(Override)'''
+        super(UnrealSnapshotAssetWidget, self).set_asset_info(asset_info)
+
+        if asset_info.get(asset_const.OBJECTS_LOADED) in [True, 'True']:
+
+            try:
+                # Check if asset is in sync
+                asset_filesystem_path = (
+                    unreal_utils.asset_path_to_filesystem_path(self.asset_path)
+                )
+
+                mod_date = os.path.getmtime(asset_filesystem_path)
+
+                # Check if modified, cannot check file size
+                if mod_date != asset_info[asset_const.MOD_DATE]:
+                    # Indicate that asset is out of sync
+                    if self._is_latest_version:
+                        self.set_indicator_color('blue')
+                        self.setToolTip(
+                            'Asset has been updated locally and will be proposed to be published.'
+                        )
+                    else:
+                        self.set_indicator_color('red')
+                        self.setToolTip(
+                            'Asset has both been updated in ftrack and locally - please resolve conflict by either loading latest version or publish local.'
+                        )
+                else:
+                    self.setToolTip(
+                        'Asset is not modified locally or have a new publish in ftrack.'
+                    )
+            except Exception as e:
+                # Asset probably been removed from disk and leaving ftrack node behind
+                logger.exception(e)
+                self.set_indicator_color('red')
+                self.setToolTip(
+                    'Asset has been removed from disk, please remove asset to stop it from being tracked.'
+                )
 
 
 class UntrackedUnrealAssetWidget(QtWidgets.QFrame):
@@ -251,7 +292,11 @@ class UntrackedUnrealAssetWidget(QtWidgets.QFrame):
         )
 
     def build(self):
-        content_directory = self.asset_path[: self.asset_path.rfind('/')]
+        content_directory = self.asset_path[
+            6
+            if self.asset_path.lower().find('/game/') > -1
+            else 0 : self.asset_path.rfind('/')
+        ]
         label_content_directory = QtWidgets.QLabel(content_directory)
         label_content_directory.setStyleSheet('font-size: 9px;')
         label_content_directory.setObjectName("gray-dark")

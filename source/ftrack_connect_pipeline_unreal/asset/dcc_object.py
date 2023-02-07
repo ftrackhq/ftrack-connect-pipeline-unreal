@@ -163,3 +163,5 @@ class UnrealDccObject(DccObject):
                 else asset_const.NODE_METADATA_TAG,
                 str(self.get(asset_const.ASSET_INFO_ID)),
             )
+            # Have Unreal save the asset as it has been modified
+            unreal.EditorAssetLibrary.save_asset(node_name)
