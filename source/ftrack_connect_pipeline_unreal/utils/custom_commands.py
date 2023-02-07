@@ -968,7 +968,12 @@ def get_asset_dependencies(
     include_soft_package_references=False,
 ):
     '''Return a list of asset dependencies for the given *asset_path*. If *recursive* is True, return all dependencies
-    recursively, otherwise only return direct dependencies.'''
+    recursively, otherwise only return direct dependencies.
+
+    Populate the Unreal dependencys options with *include_hard_management_references*,
+    *include_hard_package_references*, *include_searchable_names*, *include_soft_management_references* and
+    *include_soft_package_references*.
+    '''
 
     # https://docs.unrealengine.com/4.27/en-US/PythonAPI/class/AssetRegistry.html?highlight=assetregistry#unreal.AssetRegistry.get_dependencies
     # Setup dependency options
@@ -985,6 +990,7 @@ def get_asset_dependencies(
     result = []
 
     def conditional_add_asset_path(asset_path):
+        '''Add the given *asset_path* to the result list if it is in Game and not already in the result list.'''
         asset_path = os.path.splitext(asset_path)[0]
         if asset_path.lower().startswith('/game/') and not (
             asset_path == parent_asset_path or asset_path in result
@@ -992,6 +998,7 @@ def get_asset_dependencies(
             result.append(asset_path)
 
     def _get_asset_dependencies(asset_path):
+        '''Get asset dependencies for the given *asset_path* and them to result.'''
 
         if asset_path in result:
             return []
@@ -1035,6 +1042,7 @@ def get_level_dependencies(recursive=False):
     result = []
 
     def conditional_add_asset_path(asset_path):
+        '''Add the given *asset_path* to the result list if it is a game asset and not already resolved or is the level itself.'''
         asset_path = os.path.splitext(asset_path)[0]
         # Make sure it is a game asset and not already resolved
         if asset_path.lower().startswith('/game/') and not (
@@ -1074,6 +1082,9 @@ def get_level_dependencies(recursive=False):
                 # Probably a blueprint
                 cls = actor.get_class()
                 conditional_add_asset_path(cls.get_path_name())
+
+            # TODO: Make sure we cover all actor types and are able to extract asset dependencies accordingly
+
         except Exception as e:
             logger.error(e)
             print(traceback.format_exc())
