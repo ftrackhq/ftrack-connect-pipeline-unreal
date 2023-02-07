@@ -264,7 +264,7 @@ def get_all_sequences(as_names=True):
     Returns a list of all sequence assets used in level. If *as_names* is True, the asset name will be used instead of the asset itself.
     '''
     result = []
-    actors = unreal.EditorActorSubsystem.get_all_level_actors()
+    actors = unreal.EditorLevelLibrary.get_all_level_actors()
     for actor in actors:
         if actor.static_class() == unreal.LevelSequenceActor.static_class():
             level_sequence = actor.load_sequence()
@@ -1394,21 +1394,71 @@ def find_rendered_media(render_folder, shot_name):
                 shot_render_folder
             )
 
-            movie_path = None
-            sequence_path = None
             # Locate AVI media and possible image sequence on disk
-
-            avi_files = glob.glob(os.path.join(shot_render_folder, '*.avi'))
-
-            if avi_files:
-                movie_path = avi_files[0]
-
-            # TODO: Detect image sequence
+            movie_path = find_movie(shot_render_folder)
+            sequence_path, first, last = find_image_sequence(
+                shot_render_folder
+            )
 
             if movie_path or sequence_path:
                 return movie_path, sequence_path
 
     return error_message
+
+
+def find_image_sequence(render_folder):
+    '''Try to find a continous image sequence in the *render_folder*, Unreal always names frames "Image.0001.png".
+    Will return the clique parsable expression together with first and last frame number.'''
+
+    if not render_folder or not os.path.exists(render_folder):
+        return None, -1, -1
+
+    # Search folder for images sequence, extract minimum and maximum frame number
+    prefix = None
+    ext = None
+    first = sys.maxsize
+    last = -sys.maxsize
+    for filename in os.listdir(render_folder):
+        parts = filename.split('.')
+        if len(parts) == 3:
+            if prefix is None:
+                prefix = parts[0]
+            elif prefix != parts[0]:
+                continue  # Ignore files with different prefix
+            if ext is None:
+                ext = parts[2]
+            elif ext != parts[2]:
+                continue  # Ignore files with different extension
+            try:
+                frame = int(parts[1])
+                if frame < first:
+                    first = frame
+                if frame > last:
+                    last = frame
+            except:
+                continue
+    return (
+        '{}.%04d.{} [{}-{}]'.format(
+            os.path.join(render_folder, prefix),
+            ext,
+            first,
+            last,
+        ),
+        first,
+        last,
+    )
+
+
+def find_movie(render_folder):
+    if not render_folder or not os.path.exists(render_folder):
+        return None
+
+    avi_files = glob.glob(os.path.join(render_folder, '*.avi'))
+
+    if avi_files:
+        return avi_files[0]
+
+    return None
 
 
 #### MISC ####

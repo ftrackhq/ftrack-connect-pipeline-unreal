@@ -3,7 +3,7 @@
 import copy
 import os
 from functools import partial
-import json
+
 
 import unreal
 
@@ -29,7 +29,6 @@ from ftrack_connect_pipeline_qt.ui.batch_publisher.base import (
 )
 from ftrack_connect_pipeline_qt.utils import clear_layout, set_property
 
-from ftrack_connect_pipeline_unreal.constants import asset as asset_const
 from ftrack_connect_pipeline_unreal.utils import (
     custom_commands as unreal_utils,
 )
@@ -90,13 +89,16 @@ class UnrealShotBatchPublisherWidget(BatchPublisherBaseWidget):
                 QtWidgets.QLabel('Capture folder:')
             )
 
+            # TODO: Store video capture output folder in Unreal project
             default_capture_folder = os.path.realpath(
                 os.path.join(
                     unreal.SystemLibrary.get_project_saved_directory(),
                     "VideoCaptures",
                 )
             )
-            self._capture_folder_input = QtWidgets.QLineEdit()
+            self._capture_folder_input = QtWidgets.QLineEdit(
+                default_capture_folder
+            )
             self._capture_folder_input.setReadOnly(True)
 
             capture_folder_widget.layout().addWidget(
@@ -107,7 +109,7 @@ class UnrealShotBatchPublisherWidget(BatchPublisherBaseWidget):
             self._browser_button.setObjectName('borderless')
 
             capture_folder_widget.layout().addWidget(self._browser_button)
-            self.layout().addLayout(capture_folder_widget)
+            self.layout().addWidget(capture_folder_widget)
 
             self._file_selector = QtWidgets.QFileDialog()
             self._file_selector.setFileMode(QtWidgets.QFileDialog.Directory)
