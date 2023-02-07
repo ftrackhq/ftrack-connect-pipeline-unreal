@@ -162,7 +162,7 @@ def load_integration():
                 elif widget_name == qt_constants.BATCH_PUBLISHER_WIDGET:
                     widget = ftrack_client(
                         event_manager,
-                        event['data']['pipeline'].get('assets'),
+                        asset_paths=event['data']['pipeline'].get('assets'),
                         parent_asset_version_id=event['data']['pipeline'].get(
                             'parent_asset_version_id'
                         ),
