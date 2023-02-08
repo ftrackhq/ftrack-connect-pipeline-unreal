@@ -70,20 +70,15 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
         shot_tracks = None
         if not asset_paths:
             # Any level sequence selected?
-            for actor in unreal.EditorLevelLibrary.get_selected_level_actors():
-                if (
-                    actor.static_class()
-                    == unreal.LevelSequenceActor.static_class()
-                ):
-                    # Get shot tracks
-                    level_sequence = actor.load_sequence()
-                    shot_tracks = unreal_utils.get_sequence_shots()
-                    if shot_tracks:
-                        # A master sequence with shots are selected, enter that mode
-                        self.batch_publish_mode = (
-                            unreal_constants.BATCH_PUBLISH_SHOTS
-                        )
-                        break
+            level_sequence = unreal_utils.get_selected_sequence()
+            if level_sequence:
+                # Get shot tracks
+                shot_tracks = unreal_utils.get_sequence_shots()
+                if shot_tracks:
+                    # A master sequence with shots are selected, enter that mode
+                    self.batch_publish_mode = (
+                        unreal_constants.BATCH_PUBLISH_SHOTS
+                    )
             # Choose selected assets in Unreal Content browser
             asset_paths = [
                 str(selected_asset.package_name)

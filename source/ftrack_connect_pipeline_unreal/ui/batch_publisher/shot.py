@@ -109,6 +109,11 @@ class UnrealShotBatchPublisherWidget(BatchPublisherBaseWidget):
             self._browser_button.setObjectName('borderless')
 
             capture_folder_widget.layout().addWidget(self._browser_button)
+
+            capture_folder_widget.setToolTip(
+                'Render shots to this folder, using the {shot}\\ syntax at end of path to have each '
+                'shot output in its own folder, to enable shot publisher to pick up media'
+            )
             self.layout().addWidget(capture_folder_widget)
 
             self._file_selector = QtWidgets.QFileDialog()
@@ -203,6 +208,20 @@ class UnrealShotBatchPublisherWidget(BatchPublisherBaseWidget):
                     ),
                 )
                 return
+
+            level_sequence = unreal_utils.get_selected_sequence()
+
+            # Collect and provide the selected sequence
+            for plugin in definition_fragment.get_all(
+                type=core_constants.COLLECTOR,
+                category=core_constants.PLUGIN,
+            ):
+                if not 'options' in plugin:
+                    plugin['options'] = {}
+
+                plugin['options']['collected_objects'] = [
+                    level_sequence.get_name()
+                ]
 
             # Fill in collected media on update
 
@@ -415,7 +434,35 @@ class UnrealShotWidget(ItemBaseWidget):
             sequence_path, movie_path = result
             media_found = True
 
-            # TODO: Inject collected data into definition
+            tooltip = ''
+            # Provide the media
+            for d_component in definition.get_all(
+                type=core_constants.COMPONENT
+            ):
+                if d_component['name'] in ['sequence', 'reviewable']:
+                    for plugin in d_component.get_all(
+                        type=core_constants.EXPORTER,
+                        category=core_constants.PLUGIN,
+                    ):
+                        target_media = (
+                            sequence_path
+                            if d_component['name'] == 'sequence'
+                            else movie_path
+                        )
+                        plugin['enabled'] = target_media is not None
+                        if target_media:
+                            if not 'options' in plugin:
+                                plugin['options'] = {}
+                            plugin['options']['mode'] = 'pickup'
+                            plugin['options']['file_path'] = target_media
+                            if sequence_path:
+                                tooltip += 'Using image sequence: {}'.format(
+                                    sequence_path
+                                )
+                            else:
+                                tooltip += 'Using reviewable movie: {}'.format(
+                                    movie_path
+                                )
 
         self.set_checked(media_found)
         if not media_found:

@@ -275,6 +275,19 @@ def get_all_sequences(as_names=True):
     return result
 
 
+def get_selected_sequence():
+    '''Return the selected level sequence asset or None if no sequence is selected.'''
+    for (
+        sequence_actor
+    ) in unreal.EditorLevelLibrary.get_selected_level_actors():
+        if (
+            sequence_actor.static_class()
+            == unreal.LevelSequenceActor.static_class()
+        ):
+            return sequence_actor.load_sequence()
+    return None
+
+
 def get_sequence_shots(level_sequence):
     '''
     Returns a list of all shot tracks in the given *level_sequence*.
