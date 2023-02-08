@@ -264,7 +264,7 @@ def get_all_sequences(as_names=True):
     Returns a list of all sequences names
     '''
     result = []
-    actors = unreal.EditorActorSubsystem.get_all_level_actors()
+    actors = unreal.EditorLevelLibrary.get_all_level_actors()
     for actor in actors:
         if actor.static_class() == unreal.LevelSequenceActor.static_class():
             seq = actor.load_sequence()
