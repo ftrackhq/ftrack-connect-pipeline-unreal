@@ -13,7 +13,6 @@ from ftrack_connect_pipeline import constants as core_constants
 
 from ftrack_connect_pipeline.definition.definition_object import (
     DefinitionObject,
-    DefinitionList,
 )
 
 from ftrack_connect_pipeline_qt.ui.utility.widget import (
@@ -64,64 +63,86 @@ class UnrealShotBatchPublisherWidget(BatchPublisherBaseWidget):
         self.warn_missing_definition_label = QtWidgets.QLabel()
         self.layout().addWidget(self.warn_missing_definition_label)
         self.sequence_context_selector = None
-        if self.level == 0:
-            self.warn_missing_definition_label.setText(
-                '<html><i>Could not locate shot publisher definition, please check configuration!</i></html>'
+
+        self.warn_missing_definition_label.setText(
+            '<html><i>Could not locate shot publisher definition, please check configuration!</i></html>'
+        )
+
+        # Add sequence context selector
+        self.root_context_label = QtWidgets.QLabel('Sequence context:')
+        self.root_context_label.setObjectName('gray')
+        self.layout().addWidget(self.root_context_label)
+        self.sequence_context_selector = context_selector.ContextSelector(
+            self.session, enble_context_change=True, select_task=False
+        )
+        self.layout().addWidget(self.sequence_context_selector)
+        self.layout().addWidget(line.Line(style='solid'))
+
+        # Add capture folder input
+        capture_folder_widget = QtWidgets.QWidget()
+        capture_folder_widget.setLayout(QtWidgets.QHBoxLayout())
+        capture_folder_widget.layout().setContentsMargins(2, 2, 2, 2)
+        capture_folder_widget.layout().setSpacing(2)
+
+        capture_folder_widget.layout().addWidget(
+            QtWidgets.QLabel('Capture folder:')
+        )
+
+        # TODO: Store video capture output folder in Unreal project
+        default_capture_folder = os.path.realpath(
+            os.path.join(
+                unreal.SystemLibrary.get_project_saved_directory(),
+                "VideoCaptures",
             )
+        )
+        self._capture_folder_input = QtWidgets.QLineEdit(
+            default_capture_folder
+        )
+        self._capture_folder_input.setReadOnly(True)
 
-            # Add sequence context selector
-            self.root_context_label = QtWidgets.QLabel('Sequence context:')
-            self.root_context_label.setObjectName('gray')
-            self.layout().addWidget(self.root_context_label)
-            self.sequence_context_selector = context_selector.ContextSelector(
-                self.session, enble_context_change=True, select_task=False
-            )
-            self.layout().addWidget(self.sequence_context_selector)
-            self.layout().addWidget(line.Line(style='solid'))
+        capture_folder_widget.layout().addWidget(
+            self._capture_folder_input, 20
+        )
 
-            # Add capture folder input
-            capture_folder_widget = QtWidgets.QWidget()
-            capture_folder_widget.setLayout(QtWidgets.QHBoxLayout())
-            capture_folder_widget.layout().setContentsMargins(0, 0, 0, 0)
-            capture_folder_widget.layout().setSpacing(0)
+        self._browser_button = QtWidgets.QPushButton('BROWSE')
+        self._browser_button.setObjectName('borderless')
 
-            capture_folder_widget.layout().addWidget(
-                QtWidgets.QLabel('Capture folder:')
-            )
+        capture_folder_widget.layout().addWidget(self._browser_button)
 
-            # TODO: Store video capture output folder in Unreal project
-            default_capture_folder = os.path.realpath(
-                os.path.join(
-                    unreal.SystemLibrary.get_project_saved_directory(),
-                    "VideoCaptures",
-                )
-            )
-            self._capture_folder_input = QtWidgets.QLineEdit(
-                default_capture_folder
-            )
-            self._capture_folder_input.setReadOnly(True)
+        capture_folder_widget.setToolTip(
+            'Render shots to this folder, using the {shot}\\ syntax at end of path to have each '
+            'shot output in its own folder. This will enable shot publisher to pick up media'
+        )
+        self.layout().addWidget(capture_folder_widget)
 
-            capture_folder_widget.layout().addWidget(
-                self._capture_folder_input, 20
-            )
+        self._file_selector = QtWidgets.QFileDialog()
+        self._file_selector.setFileMode(QtWidgets.QFileDialog.Directory)
 
-            self._browser_button = QtWidgets.QPushButton('BROWSE')
-            self._browser_button.setObjectName('borderless')
+        self.layout().addWidget(capture_folder_widget)
 
-            capture_folder_widget.layout().addWidget(self._browser_button)
+        # Add publish options
 
-            capture_folder_widget.setToolTip(
-                'Render shots to this folder, using the {shot}\\ syntax at end of path to have each '
-                'shot output in its own folder, to enable shot publisher to pick up media'
-            )
-            self.layout().addWidget(capture_folder_widget)
+        self._cb_update_shot_frame_ranges = QtWidgets.QCheckBox(
+            'Update shot frame ranges:'
+        )
+        self._cb_update_shot_frame_ranges.setChecked(True)
+        self.layout().addWidget(self._cb_update_shot_frame_ranges)
 
-            self._file_selector = QtWidgets.QFileDialog()
-            self._file_selector.setFileMode(QtWidgets.QFileDialog.Directory)
-
-            self.layout().addWidget(capture_folder_widget)
+        self.layout().addWidget(line.Line(style='solid'))
 
         super(UnrealShotBatchPublisherWidget, self).build()
+
+    def _update_info_label(self):
+        '''(Override) Update info label'''
+        if self.model.rowCount() == 0:
+            self._label_info.setText('No shots(s)')
+        else:
+            self._label_info.setText(
+                'Listing {} {}'.format(
+                    self.model.rowCount(),
+                    'shots' if self.model.rowCount() > 1 else 'shot',
+                )
+            )
 
     def post_build(self):
         super(UnrealShotBatchPublisherWidget, self).post_build()
@@ -173,43 +194,15 @@ class UnrealShotBatchPublisherWidget(BatchPublisherBaseWidget):
         self.warn_missing_definition_label.setVisible(False)
         result = []
 
-        for shot_track in sorted(self.shot_tracks):
+        level_sequence = unreal_utils.get_selected_sequence()
 
-            # Build the publisher definition
-            definition_fragment = None
-            for d_component in definition.get_all(
-                type=core_constants.COMPONENT
-            ):
-                # Pick the first component encountered
-                component_name_effective = d_component['name']
+        for shot_track in sorted(
+            self.shot_tracks, key=lambda x: x.get_shot_display_name()
+        ):
 
-                # Construct definition fragment
-                definition_fragment = DefinitionObject({})
-                for key in definition:
-                    if key == core_constants.COMPONENTS:
-                        definition_fragment[key] = DefinitionList(
-                            [DefinitionObject(d_component.to_dict())]
-                        )
-                        definition_fragment.get_first(
-                            type=core_constants.COMPONENT
-                        )['name'] = component_name_effective
-                    else:
-                        # Copy the category
-                        definition_fragment[key] = copy.deepcopy(
-                            definition[key]
-                        )
-                break
+            # Build the publisher definition, clone the definition
 
-            if not definition_fragment:
-                dialog.ModalDialog(
-                    self,
-                    message='{} publisher does not contain any usable component!'.format(
-                        definition['name']
-                    ),
-                )
-                return
-
-            level_sequence = unreal_utils.get_selected_sequence()
+            definition_fragment = DefinitionObject(definition.to_dict())
 
             # Collect and provide the selected sequence
             for plugin in definition_fragment.get_all(
@@ -222,15 +215,11 @@ class UnrealShotBatchPublisherWidget(BatchPublisherBaseWidget):
                 plugin['options']['collected_objects'] = [
                     level_sequence.get_name()
                 ]
+                plugin['options']['sequence_name'] = level_sequence.get_name()
 
             # Fill in collected media on update
 
-            result.append(
-                (
-                    shot_track,
-                    definition_fragment,
-                )
-            )
+            result.append((shot_track, definition_fragment, {}))
 
         # Store and present
         self.set_items(result, UnrealBatchPublisherShotListWidget)
@@ -244,6 +233,27 @@ class UnrealShotBatchPublisherWidget(BatchPublisherBaseWidget):
                     self.model.data(index), sequence_context_id, capture_folder
                 )
 
+    def can_publish(self):
+        '''(Override) Check if we can publish'''
+        # Check that project context is set
+        if self.sequence_context_selector.context_id is None:
+            dialog.ModalDialog(
+                self,
+                message='Please set the sequence context!'.format(),
+            )
+            return False
+
+        # Check if any shots are selected
+        for widget in self.item_list.assets:
+            if widget.checked:
+                return True
+
+        dialog.ModalDialog(
+            self,
+            message='No shot(s) selected!'.format(),
+        )
+        return False
+
     def prepare_run_definition(self, item):
         '''(Override) Called before *definition* is executed.'''
 
@@ -251,10 +261,7 @@ class UnrealShotBatchPublisherWidget(BatchPublisherBaseWidget):
         self.client.activateWindow()
 
         # Make sure asset parent context exists and inject it into definition
-        (
-            shot_track,
-            definition,
-        ) = item
+        (shot_track, definition, metadata) = item
 
         sequence_context_id = unreal_utils.get_sequence_context_id()
         shot_name = shot_track.get_shot_display_name()
@@ -299,6 +306,11 @@ class UnrealShotBatchPublisherWidget(BatchPublisherBaseWidget):
             plugin['options']['context_id'] = self.client.context_id
             plugin['options']['sequence_context_id'] = sequence_context_id
             plugin['options']['shot_name'] = shot_name
+            if self._cb_update_shot_frame_ranges.isChecked():
+                for key in ['start', 'end']:
+                    if key in metadata:
+                        plugin['options'][key] = metadata[key]
+
             if asset_id:
                 plugin['options']['asset_id'] = asset_id
             plugin['options']['asset_name'] = asset_name
@@ -332,6 +344,7 @@ class UnrealBatchPublisherShotListWidget(BatchPublisherListBaseWidget):
             (
                 shot_track,
                 definition,
+                metadata,
             ) = self.model.data(index)
 
             # Build item widget
@@ -346,7 +359,7 @@ class UnrealBatchPublisherShotListWidget(BatchPublisherListBaseWidget):
                 'true' if row == 0 else 'false',
             )
 
-            item_widget.set_data(shot_track, definition)
+            item_widget.set_data(shot_track, definition, metadata)
             self.layout().addWidget(item_widget)
             item_widget.clicked.connect(
                 partial(self.item_clicked, item_widget)
@@ -369,8 +382,7 @@ class UnrealShotWidget(ItemBaseWidget):
         event_manager,
         parent=None,
     ):
-        self._dependencies_batch_publisher_widget = None
-        self._asset_path = None
+        self._name = None
         super(UnrealShotWidget, self).__init__(
             index,
             batch_publisher_widget,
@@ -381,8 +393,22 @@ class UnrealShotWidget(ItemBaseWidget):
 
     def get_ident_widget(self):
         '''Return the widget the presents the asset ident'''
-        self._ident_widget = QtWidgets.QLabel()
-        return self._ident_widget
+        ident_container = QtWidgets.QWidget()
+        ident_container.setLayout(QtWidgets.QHBoxLayout())
+        ident_container.layout().setContentsMargins(0, 0, 0, 0)
+        ident_container.layout().setSpacing(0)
+
+        self._ident_widget_title = QtWidgets.QLabel()
+        self._ident_widget_title.setObjectName('h4')
+        ident_container.layout().addWidget(self._ident_widget_title)
+
+        ident_container.layout().addWidget(QtWidgets.QLabel(), 100)
+
+        self._ident_widget_frames = QtWidgets.QLabel()
+        self._ident_widget_frames.setObjectName('gray')
+        ident_container.layout().addWidget(self._ident_widget_frames)
+
+        return ident_container
 
     def get_context_widget(self):
         '''Return the widget the presents the context selection'''
@@ -397,8 +423,10 @@ class UnrealShotWidget(ItemBaseWidget):
         self,
         shot_track,
         definition,
+        metadata,
     ):
         '''(Override) Set data to be displayed in widget'''
+        self._widget_factory.batch_id = self.item_id
 
         # Get the shot name from the shot track
         self._name = shot_track.get_shot_display_name()
@@ -406,14 +434,15 @@ class UnrealShotWidget(ItemBaseWidget):
         self._start = shot_track.get_start_frame()
         self._end = shot_track.get_end_frame()
 
-        self._ident_widget.setText(
-            '{} [{}-{}]'.format(self._name, self._start, self._end)
+        self._ident_widget_title.setText('{}'.format(self._name))
+        self._ident_widget_frames.setText(
+            '[{}-{}]'.format(self._start, self._end)
         )
         super(UnrealShotWidget, self).set_data(definition)
 
     def get_ident(self):
         '''Return the asset name as human readable item ident'''
-        return self._asset_path.split('/')[-1] if self._asset_path else '?'
+        return self._name
 
     def update_item(self, item_data, sequence_context_id, capture_folder):
         '''A *sequence_context_id* and *capture_folder* has been set, evaluate'''
@@ -421,9 +450,16 @@ class UnrealShotWidget(ItemBaseWidget):
         (
             shot_track,
             definition,
+            metadata,
         ) = item_data
 
         # Determine if can be published, e.g. media found
+        if sequence_context_id is None:
+            self.setToolTip('No sequence context selected')
+            self.checkable = False
+            return
+
+        self.checkable = True
         media_found = False
 
         result = unreal_utils.find_rendered_media(
@@ -431,7 +467,7 @@ class UnrealShotWidget(ItemBaseWidget):
         )
 
         if result and isinstance(result, tuple):
-            sequence_path, movie_path = result
+            movie_path, sequence_path, start, end = result
             media_found = True
 
             tooltip = ''
@@ -455,16 +491,23 @@ class UnrealShotWidget(ItemBaseWidget):
                                 plugin['options'] = {}
                             plugin['options']['mode'] = 'pickup'
                             plugin['options']['file_path'] = target_media
-                            if sequence_path:
-                                tooltip += 'Using image sequence: {}'.format(
-                                    sequence_path
+                            if d_component['name'] == 'sequence':
+                                tooltip += (
+                                    'Publishing image sequence: {}<br>'.format(
+                                        sequence_path
+                                    )
                                 )
                             else:
-                                tooltip += 'Using reviewable movie: {}'.format(
+                                tooltip += 'Publishing reviewable movie: {}<br>'.format(
                                     movie_path
                                 )
+            if sequence_path:
+                # Store start and end frame so we can update shot
+                metadata['start'] = start
+                metadata['end'] = end
+            self.setToolTip('<html>{}</html>'.format(tooltip))
 
-        self.set_checked(media_found)
+        self.checked = media_found
         if not media_found:
             self.setToolTip(
                 result or 'Could not find an rendered media for shot'

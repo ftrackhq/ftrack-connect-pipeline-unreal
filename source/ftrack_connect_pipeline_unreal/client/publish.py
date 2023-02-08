@@ -73,7 +73,7 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
             level_sequence = unreal_utils.get_selected_sequence()
             if level_sequence:
                 # Get shot tracks
-                shot_tracks = unreal_utils.get_sequence_shots()
+                shot_tracks = unreal_utils.get_sequence_shots(level_sequence)
                 if shot_tracks:
                     # A master sequence with shots are selected, enter that mode
                     self.batch_publish_mode = (
@@ -91,23 +91,26 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
                 title=title,
                 parent=parent,
             )
-            self.setWindowTitle(title or 'ftrack Unreal Shot Publisher')
+            self.setWindowTitle(title or 'ftrack Unreal Batch Publisher')
+            self.resize(1000, 700)
         else:
             # More than one asset selected?
             if len(asset_paths) == 0:
+                message = 'No assets selected in Unreal content browser, or Master sequence in level!'
                 dialog.ModalDialog(
                     None,
                     title='Batch publisher',
-                    message='No assets selected in Unreal content browser, or Master sequence in level!',
+                    message=message,
                 )
-                return
+                raise Exception(message)
             elif len(asset_paths) == 1:
+                message = 'Please use the standard publisher for single asset selections.'
                 dialog.ModalDialog(
                     None,
                     title='Batch publisher',
-                    message='Please use the standard publisher for single asset selections.',
+                    message=message,
                 )
-                return
+                raise Exception(message)
             # TODO: Check if there are levels in selection, abort if so
             super(UnrealQtBatchPublisherClientWidget, self).__init__(
                 event_manager,
@@ -115,7 +118,7 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
                 title=title,
                 parent=parent,
             )
-            self.setWindowTitle(title or 'ftrack Unreal Asset Batch Publisher')
+            self.setWindowTitle(title or 'ftrack Unreal Batch Publisher')
 
     def _build_definition_selector(self):
         '''Build Unreal definition selector widget'''
@@ -147,14 +150,5 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
 
     def run(self):
         '''(Override) Run the publisher.'''
-        # Check that project context is set
-        if (
-            self.batch_publisher_widget.root_context_selector.context_id
-            is None
-        ):
-            dialog.ModalDialog(
-                self,
-                message='Please set the Unreal root context!'.format(),
-            )
-            return
-        super(UnrealQtBatchPublisherClientWidget, self).run()
+        if self.batch_publisher_widget.can_publish():
+            super(UnrealQtBatchPublisherClientWidget, self).run()

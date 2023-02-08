@@ -95,6 +95,27 @@ class UnrealAssetBatchPublisherWidget(BatchPublisherBaseWidget):
             self.layout().addWidget(line.Line(style='solid'))
         super(UnrealAssetBatchPublisherWidget, self).build()
 
+    def _update_info_label(self):
+        '''(Override) Update info label'''
+        if self.model.rowCount() == 0:
+            self._label_info.setText('No asset(s)')
+        elif self.level == 0:
+            self._label_info.setText(
+                'Listing {} {}'.format(
+                    self.model.rowCount(),
+                    'assets' if self.model.rowCount() > 1 else 'asset',
+                )
+            )
+        else:
+            self._label_info.setText(
+                '{} {}'.format(
+                    self.model.rowCount(),
+                    'dependency'
+                    if self.model.rowCount() == 1
+                    else 'dependencies',
+                )
+            )
+
     def post_build(self):
         super(UnrealAssetBatchPublisherWidget, self).post_build()
         if self.root_context_selector:
@@ -253,6 +274,26 @@ class UnrealAssetBatchPublisherWidget(BatchPublisherBaseWidget):
         if self.item_list:
             for widget in self.item_list.assets:
                 widget.update_item(root_context_id)
+
+    def can_publish(self):
+        '''(Override) Check if we can publish'''
+        # Check that project context is set
+        if self.root_context_selector.context_id is None:
+            dialog.ModalDialog(
+                self,
+                message='Please set the Unreal root context!'.format(),
+            )
+            return False
+        # Check if any assets are selected
+        for widget in self.item_list.assets:
+            if widget.checked:
+                return True
+
+        dialog.ModalDialog(
+            self,
+            message='No asset(s) selected!'.format(),
+        )
+        return False
 
     def prepare_run_definition(self, item):
         '''(Override) Called before *definition* is executed.'''
@@ -555,7 +596,7 @@ class UnrealAssetWidget(ItemBaseWidget):
                 ) or mod_date != param_dict.get(asset_const.MOD_DATE):
                     do_publish = True
 
-        self.set_checked(do_publish)
+        self.checked = do_publish
         if not do_publish:
             self.setToolTip(
                 'Asset is up to date and has not changed since last publish'
@@ -573,6 +614,28 @@ class UnrealAssetWidget(ItemBaseWidget):
             self._dependencies_batch_publisher_widget.update_items(
                 root_context_id
             )
+
+    def run(self):
+        '''(Override)'''
+        # Recursively add dependencies to progress widget and queue up
+        if self.dependencies_batch_publisher_widget is not None:
+            self.dependencies_batch_publisher_widget.run()
+
+    def summarise(self):
+        '''(Override)'''
+        total = 0
+        succeeded = 0
+        failed = 0
+        if self.dependencies_batch_publisher_widget:
+            (
+                _total,
+                _succeeded,
+                _failed,
+            ) = self.dependencies_batch_publisher_widget.run_post()
+            total += _total
+            succeeded += _succeeded
+            failed += _failed
+        return total, succeeded, failed
 
     def run_callback(self, item_widget, event):
         '''(Override) Executed after an item has been publisher through event from pipeline,
