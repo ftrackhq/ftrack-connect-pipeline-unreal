@@ -399,19 +399,6 @@ def open_file(path, options, session):
     return import_path
 
 
-def get_dependencies_from_metadata(asset_version):
-    dependencies = None
-    if core_constants.PIPELINE_METADATA_KEY in list(
-        asset_version['metadata'].keys()
-    ):
-        metadata = json.loads(
-            asset_version['metadata'][core_constants.PIPELINE_METADATA_KEY]
-        )
-        if 'dependencies' in metadata:
-            dependencies = metadata.get('dependencies', [])
-    return dependencies
-
-
 def import_dependencies(version_id, event_manager, provided_logger=None):
     '''Recursive import all dependencies of the given *version_id* using *session* object logging woth *provided_logger*. Returns a list
     of messages about the import process.'''
@@ -431,8 +418,31 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
     ident = str_version(asset_version, by_task=False)
 
     location = event_manager.session.pick_location()
+    dependencies = []
 
-    dependencies = get_dependencies_from_metadata(asset_version)
+    # Fetch dependency component
+    dependency_component = event_manager.session.query(
+        'Component where version_id={} and name="dependencies"'.format(
+            asset_version['id']
+        )
+    ).first()
+
+    if dependency_component:
+        # Read it
+        if location.get_component_availability(dependency_component) != 100:
+            add_message(
+                'The dependency component is not available in current location: {}'.format(
+                    location['name']
+                )
+            )
+            return result
+
+        dependency_component_path = location.get_filesystem_path(
+            dependency_component
+        )
+        metadata = json.load(open(dependency_component_path, 'r'))
+        dependencies = metadata.get('dependencies', [])
+
     if not dependencies:
         add_message('No dependencies found for {}'.format(ident))
         return result

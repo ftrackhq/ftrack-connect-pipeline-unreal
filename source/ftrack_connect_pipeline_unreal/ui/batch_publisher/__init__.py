@@ -4,6 +4,7 @@ import copy
 import os
 from functools import partial
 import json
+import tempfile
 
 import unreal
 
@@ -380,25 +381,24 @@ class UnrealBatchPublisherWidget(BatchPublisherBaseWidget):
                             self.parent_asset_version_id
                         )
                     ).one()
-                    metadata = {}
-                    if (
-                        core_constants.PIPELINE_METADATA_KEY
-                        in asset_version.get('metadata')
-                    ):
-                        metadata = json.loads(
-                            asset_version['metadata'][
-                                core_constants.PIPELINE_METADATA_KEY
-                            ]
-                        )
-
-                    metadata['dependencies'] = asset_infos
+                    # Publish a component with the asset infos
+                    component_path = tempfile.NamedTemporaryFile(
+                        suffix='.json'
+                    ).name
+                    metadata = {'dependencies': asset_infos}
+                    with open(component_path, 'w') as f:
+                        json.dump(metadata, f)
 
                     self.logger.debug(
-                        'Metadata to store @ "{}"!'.format(metadata)
+                        'Dependency data to publish @ "{}"!'.format(metadata)
                     )
-                    asset_version['metadata'][
-                        core_constants.PIPELINE_METADATA_KEY
-                    ] = json.dumps(metadata)
+
+                    location = self.session.pick_location()
+                    asset_version.create_component(
+                        component_path,
+                        data={'name': 'dependencies'},
+                        location=location,
+                    )
                     self.session.commit()
                 else:
                     self.logger.debug(
