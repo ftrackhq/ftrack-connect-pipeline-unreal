@@ -2,6 +2,8 @@
 # :copyright: Copyright (c) 2014-2022 ftrack
 import unreal
 
+from Qt import QtWidgets, QtCore, QtGui
+
 from ftrack_connect_pipeline import constants as core_constants
 
 from ftrack_connect_pipeline_qt.client.publish import QtPublisherClientWidget
@@ -13,6 +15,7 @@ from ftrack_connect_pipeline_qt.ui.utility.widget import (
     definition_selector,
 )
 import ftrack_connect_pipeline_qt.constants as qt_constants
+
 
 import ftrack_connect_pipeline_unreal.constants as unreal_constants
 from ftrack_connect_pipeline_unreal.ui.batch_publisher.asset import (
@@ -140,6 +143,40 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
         else:
             return UnrealShotBatchPublisherWidget(self, self.initial_items)
 
+    def build(self):
+        super(UnrealQtBatchPublisherClientWidget, self).build()
+        # Add dependency track button
+        if self._parent_asset_version_id is not None:
+            self.track_button = TrackButton('TRACK DEPENDENCIES')
+            self.track_button.setFocus()
+            self.track_button.setToolTip(
+                'Track dependencies for the published asset and close'
+            )
+            self.button_widget.layout().addWidget(self.track_button)
+
+    def post_build(self):
+        super(UnrealQtBatchPublisherClientWidget, self).post_build()
+        if self._parent_asset_version_id is not None:
+            self.track_button.clicked.connect(self._on_track_dependencies)
+
+    def _on_track_dependencies(self):
+        if self.batch_publisher_widget.dependencies_published:
+            # Already done
+            dialog.ModalDialog(
+                None,
+                title='Batch publisher',
+                message='The dependencies has already been tracked with ftrack.',
+            )
+            return
+        self.batch_publisher_widget.publish_dependencies()
+        dialog.ModalDialog(
+            None,
+            title='Batch publisher',
+            message='Successfully tracked existing dependencies without publishing any new.',
+        )
+        self.hide()
+        self.deleteLater()
+
     def check_add_processed_items(self, asset_path):
         '''(Override) Check so asset is not the parent asset'''
         if asset_path == self._parent_asset:
@@ -152,3 +189,10 @@ class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
         '''(Override) Run the publisher.'''
         if self.batch_publisher_widget.can_publish():
             super(UnrealQtBatchPublisherClientWidget, self).run()
+
+
+class TrackButton(QtWidgets.QPushButton):
+    def __init__(self, label, parent=None):
+        super(TrackButton, self).__init__(label, parent=parent)
+        self.setMaximumHeight(32)
+        self.setMinimumHeight(32)
