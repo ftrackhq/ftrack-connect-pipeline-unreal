@@ -42,7 +42,7 @@ class UnrealQtPublisherClientWidget(QtPublisherClientWidget):
         self.resize(600, 800)
 
     def get_theme_background_style(self):
-        return 'unreal'
+        return 'ftrack'
 
 
 class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):

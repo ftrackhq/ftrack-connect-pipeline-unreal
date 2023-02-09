@@ -48,6 +48,31 @@ class UnrealLoaderImporterPlugin(
             self.ftrack_object_manager.is_snapshot = True
         return init_nodes_result
 
+    def load_asset(self, context_data=None, data=None, options=None):
+        '''(Override) Load without connecting objects'''
+
+        asset_info = options.get('asset_info')
+        self.asset_info = asset_info
+        dcc_object = self.DccObject(
+            from_id=asset_info[asset_const.ASSET_INFO_ID]
+        )
+        self.dcc_object = dcc_object
+        # Remove asset_info from the options as it is not needed anymore
+        options.pop('asset_info')
+        # Execute the run method to load the objects
+        run_result = self.run(context_data, data, options)
+
+        # Set asset_info as loaded.
+        self.ftrack_object_manager.objects_loaded = True
+
+        result = {
+            'asset_info': self.asset_info,
+            'dcc_object': self.dcc_object,
+            'result': run_result,
+        }
+
+        return result
+
 
 class UnrealLoaderImporterPluginWidget(
     pluginWidget.LoaderImporterPluginWidget, UnrealBasePluginWidget

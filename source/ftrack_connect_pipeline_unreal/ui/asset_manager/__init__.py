@@ -230,7 +230,7 @@ class UnrealSnapshotAssetWidget(UnrealAssetWidget):
         '''(Override)'''
         super(UnrealSnapshotAssetWidget, self).set_asset_info(asset_info)
 
-        if asset_info.get(asset_const.OBJECTS_LOADED) in [True, 'True']:
+        if asset_info.get(asset_const.OBJECTS_LOADED) is True:
 
             try:
                 # Check if asset is in sync

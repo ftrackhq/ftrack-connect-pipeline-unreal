@@ -1,5 +1,6 @@
 # :coding: utf-8
 # :copyright: Copyright (c) 2014-2022 ftrack
+import copy
 import glob
 import traceback
 from functools import wraps
@@ -10,6 +11,7 @@ import subprocess
 import json
 import datetime
 import shutil
+import json
 
 import unreal
 
@@ -242,6 +244,41 @@ def get_asset_info(node_name, snapshot=False):
     return None, None
 
 
+def connect_object(node_name, asset_info, logger):
+    '''Store metadata and save the Unreal asset given by *node_name*, based on *asset_info*'''
+    asset = get_asset_by_path(node_name)
+    unreal.EditorAssetLibrary.set_metadata_tag(
+        asset,
+        asset_const.NODE_SNAPSHOT_METADATA_TAG
+        if asset_info.get(asset_const.IS_SNAPSHOT)
+        else asset_const.NODE_METADATA_TAG,
+        str(asset_info.get(asset_const.ASSET_INFO_ID)),
+    )
+
+    # Have Unreal save the asset as it has been modified
+    logger.debug('Saving asset: {}'.format(node_name))
+    unreal.EditorAssetLibrary.save_asset(node_name)
+
+    # As it has been saved, restore modification date to be the same as the imported component.
+    # Otherwise asset will appear out of sync in ftrack.
+    component_path = asset_info.get(asset_const.COMPONENT_PATH)
+    asset_filesystem_path = asset_path_to_filesystem_path(node_name)
+    file_size_remote = os.path.getsize(component_path)
+    file_size_local = os.path.getsize(asset_filesystem_path)
+    mod_date_remote = os.path.getmtime(component_path)
+
+    stat = os.stat(asset_filesystem_path)
+    os.utime(asset_filesystem_path, times=(stat.st_atime, mod_date_remote))
+    logger.debug(
+        'Restored file modification time: {} on asset: {} (size: {}, local size: {})'.format(
+            mod_date_remote,
+            asset_filesystem_path,
+            file_size_remote,
+            file_size_local,
+        )
+    )
+
+
 def conditional_remove_metadata_tag(node_name, metadata_tag):
     '''Remove *metadata_tag* from the given *node_name*, returns True if found'''
     asset = get_asset_by_path(node_name)
@@ -469,7 +506,7 @@ def import_ftrack_dependency_asset_info(
             dependency_ident = str_version(
                 dependency_asset_version, by_task=False
             )
-            logger.debug(
+            logger.info(
                 'Restoring pipeline asset info for {}: {}'.format(
                     dependency_ident, asset_info
                 )
@@ -481,7 +518,7 @@ def import_ftrack_dependency_asset_info(
             # Check if asset info is already present, need to remove it otherwise we won't be
             # able to restore it.
             if dcc_object.exists():
-                logger.debug(
+                logger.info(
                     'Pipeline asset {} already tracked in Unreal, removing!'.format(
                         dependency_ident
                     )
@@ -496,7 +533,7 @@ def import_ftrack_dependency_asset_info(
             if conditional_remove_metadata_tag(
                 asset_path, asset_const.NODE_METADATA_TAG
             ):
-                logger.debug(
+                logger.info(
                     'Removed pipeline asset metadata tag from asset: {}'.format(
                         asset_path
                     )
@@ -505,18 +542,19 @@ def import_ftrack_dependency_asset_info(
         logger.debug('No metadata found for asset: {}'.format(ident))
 
 
-def import_dependencies(version_id, event_manager, provided_logger=None):
+def import_dependencies(
+    version_id, event_manager, recursive=True, provided_logger=None
+):
     '''Recursive import all dependencies of the given *version_id* using *session* object logging
     with *provided_logger*. Returns a list of messages about the import process.'''
 
-    result = []
+    result = []  # List of objects to connect when all dependencies are loaded
 
     logger_effective = provided_logger or logger
 
     def add_message(message):
         print(message)
         logger_effective.info(message)
-        result.append(message)
 
     asset_version = event_manager.session.query(
         'AssetVersion where id="{}"'.format(version_id)
@@ -561,6 +599,7 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
     ]:
         dependency_ident = str(asset_info)
         try:
+
             # Fetch the version
             dependency_asset_version = event_manager.session.query(
                 'AssetVersion where id="{}"'.format(
@@ -570,6 +609,16 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
             dependency_ident = str_version(
                 dependency_asset_version, by_task=False
             )
+
+            if recursive:
+                # Import dependencies of this asset first, to have them loaded in Unreal before we load
+                result.extend(
+                    import_dependencies(
+                        dependency_asset_version['id'],
+                        event_manager,
+                        logger_effective,
+                    )
+                )
 
             # Is it available in this location?
             component = event_manager.session.query(
@@ -599,9 +648,14 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
                 delete_ftrack_node(dcc_object.name)
 
             # Bring it in
+            asset_info_options = copy.deepcopy(
+                asset_info[asset_const.ASSET_INFO_OPTIONS]
+            )
+            # Tell plugin to not connect objects
+            asset_info_options['settings']['options']['is_dependency'] = True
             run_event = ftrack_api.event.base.Event(
                 topic=core_constants.PIPELINE_RUN_PLUGIN_TOPIC,
-                data=asset_info[asset_const.ASSET_INFO_OPTIONS],
+                data=asset_info_options,
             )
 
             logger_effective.debug(
@@ -634,7 +688,6 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
             logger_effective.debug(
                 'Dependency load result: {}'.format(plugin_result_data)
             )
-
             asset_filesystem_path = list(
                 list(plugin_result_data['result'].values())[0][
                     'result'
@@ -644,20 +697,18 @@ def import_dependencies(version_id, event_manager, provided_logger=None):
                 0
             ]['asset_info']
 
+            # Store the dcc object for delayed connect
+            asset_path = filesystem_asset_path_to_asset_path(
+                asset_filesystem_path
+            )
+            result.append((asset_path, imported_asset_info))
+
             add_message(
                 'Imported asset {} to: "{}"'.format(
                     dependency_ident, asset_filesystem_path
                 )
             )
 
-            # Import dependencies of this asset
-            result.extend(
-                import_dependencies(
-                    dependency_asset_version['id'],
-                    event_manager,
-                    logger_effective,
-                )
-            )
         except:
             add_message(traceback.format_exc())
             add_message(
@@ -714,7 +765,7 @@ def set_root_context_id(context_id):
     }
     with open(context_path, 'w') as f:
         json.dump(context_dictionary, f)
-        logger.debug(
+        logger.info(
             'Successfully saved Unreal project context to: {}'.format(
                 context_path
             )
@@ -831,7 +882,10 @@ def asset_path_to_filesystem_path(asset_path, root_content_dir=None):
         )
     if asset_path.lower().startswith('/game/'):
         asset_path = asset_path[6:]  # Remove /Game/ prefix
-    path = os.path.join(root_content_dir, asset_path.replace('/', os.sep))
+    asset_path = asset_path.replace('/', os.sep)  # Align to platform
+    content_folder, asset_filename = os.path.split(asset_path)
+    asset_filename = os.path.splitext(asset_filename)[0]  # Remove extension
+    path = os.path.join(root_content_dir, content_folder, asset_filename)
     # Probe our way to finding out the extension as we can't tell from the asset path
     for ext in ['', '.uasset', '.umap']:
         result = '{}{}'.format(path, ext)
@@ -1105,7 +1159,7 @@ def set_sequence_context_id(context_id):
     }
     with open(context_path, 'w') as f:
         json.dump(context_dictionary, f)
-        logger.debug(
+        logger.info(
             'Successfully saved Unreal sequence context to: {}'.format(
                 context_path
             )
@@ -1517,7 +1571,7 @@ def render(
         frame,
     )
 
-    logger.debug('Sequencer command-line arguments: {}'.format(cmdline_args))
+    logger.info('Sequencer command-line arguments: {}'.format(cmdline_args))
 
     # Send the arguments as a single string because some arguments could
     # contain spaces and we don't want those to be quoted

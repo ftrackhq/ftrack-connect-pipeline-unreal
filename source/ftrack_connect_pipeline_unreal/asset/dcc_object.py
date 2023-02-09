@@ -152,16 +152,8 @@ class UnrealDccObject(DccObject):
         Link the given *objects* (list/set of string paths) ftrack attribute to the self
         :obj:`name` object asset_link attribute in unreal.
 
-        *objects* List of Unreal DAG objects
+        *objects* List of Unreal asset paths
         '''
+
         for node_name in objects:
-            asset = unreal_utils.get_asset_by_path(node_name)
-            unreal.EditorAssetLibrary.set_metadata_tag(
-                asset,
-                asset_const.NODE_SNAPSHOT_METADATA_TAG
-                if self.is_snapshot
-                else asset_const.NODE_METADATA_TAG,
-                str(self.get(asset_const.ASSET_INFO_ID)),
-            )
-            # Have Unreal save the asset as it has been modified
-            unreal.EditorAssetLibrary.save_asset(node_name)
+            unreal_utils.connect_object(node_name, self, self.logger)
