@@ -589,11 +589,8 @@ class UnrealAssetWidget(ItemBaseWidget):
             do_publish = False
             # Check if the asset has changed since last publish
             if os.path.exists(asset_filesystem_path):
-                file_size = os.path.getsize(asset_filesystem_path)
                 mod_date = os.path.getmtime(asset_filesystem_path)
-                if file_size != param_dict.get(
-                    asset_const.FILE_SIZE
-                ) or mod_date != param_dict.get(asset_const.MOD_DATE):
+                if mod_date != param_dict.get(asset_const.MOD_DATE):
                     do_publish = True
 
         self.checked = do_publish

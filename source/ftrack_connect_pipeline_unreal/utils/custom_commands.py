@@ -543,10 +543,18 @@ def import_ftrack_dependency_asset_info(
 
 
 def import_dependencies(
-    version_id, event_manager, recursive=True, provided_logger=None
+    version_id,
+    event_manager,
+    recursive=True,
+    is_dependency=True,
+    provided_logger=None,
 ):
-    '''Recursive import all dependencies of the given *version_id* using *session* object logging
-    with *provided_logger*. Returns a list of messages about the import process.'''
+    '''Recursive import all dependencies of the given *version_id*, recursively if *recursive* is True.
+    Using *event_manager* and logging with *provided_logger*. If *is_dependency* is false, this is a level
+    dependency and should load as a normal asset.
+
+    Returns a list of object that needs to
+    be connected after all dependencies are loaded.'''
 
     result = []  # List of objects to connect when all dependencies are loaded
 
@@ -651,8 +659,11 @@ def import_dependencies(
             asset_info_options = copy.deepcopy(
                 asset_info[asset_const.ASSET_INFO_OPTIONS]
             )
-            # Tell plugin to not connect objects
-            asset_info_options['settings']['options']['is_dependency'] = True
+            if is_dependency:
+                # Tell plugin to not connect objects
+                asset_info_options['settings']['options'][
+                    'is_dependency'
+                ] = True
             run_event = ftrack_api.event.base.Event(
                 topic=core_constants.PIPELINE_RUN_PLUGIN_TOPIC,
                 data=asset_info_options,
