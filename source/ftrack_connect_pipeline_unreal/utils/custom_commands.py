@@ -15,7 +15,11 @@ import unreal
 
 import ftrack_api
 
-from ftrack_connect_pipeline.utils import str_version, str_context
+from ftrack_connect_pipeline.utils import (
+    str_version,
+    str_context,
+    load_pipeline_metadata,
+)
 from ftrack_connect_pipeline import constants as core_constants
 from ftrack_connect_pipeline.asset.asset_info import FtrackAssetInfo
 
@@ -433,9 +437,77 @@ def open_file(path, options, session):
     return import_path
 
 
+def import_ftrack_dependency_asset_info(
+    version_id, asset_filesystem_path, event_manager
+):
+    '''Import the ftrack dependency asset info on snapshot load from version *version_id* on
+    asset pointed out by *asset_filesystem_path*, if available.'''
+    # Expect: "C:\\Users\\<user name>\\Documents\\Unreal Projects\\MyEmptyProject\\Content\\Assets\\NewWorld.umap"
+    # Transform to asset path
+    asset_path = filesystem_asset_path_to_asset_path(asset_filesystem_path)
+
+    # Restore pipeline asset info
+    asset_version = event_manager.session.query(
+        'AssetVersion where id is "{}"'.format(version_id)
+    ).one()
+    ident = str_version(asset_version, by_task=False)
+    metadata = load_pipeline_metadata(asset_version)
+    if metadata:
+        metadata = json.loads(
+            asset_version['metadata'][core_constants.PIPELINE_METADATA_KEY]
+        )
+        if core_constants.PIPELINE_ASSET_INFO_METADATA_KEY in metadata:
+            asset_info = metadata[
+                core_constants.PIPELINE_ASSET_INFO_METADATA_KEY
+            ]
+
+            dependency_asset_version = event_manager.session.query(
+                'AssetVersion where id is "{}"'.format(
+                    asset_info[asset_const.VERSION_ID]
+                )
+            ).one()
+            dependency_ident = str_version(
+                dependency_asset_version, by_task=False
+            )
+            logger.debug(
+                'Restoring pipeline asset info for {}: {}'.format(
+                    dependency_ident, asset_info
+                )
+            )
+            ftrack_object_manager = UnrealFtrackObjectManager(event_manager)
+            ftrack_object_manager.asset_info = asset_info
+            dcc_object = UnrealDccObject()
+            dcc_object.name = ftrack_object_manager.generate_dcc_object_name()
+            # Check if asset info is already present, need to remove it otherwise we won't be
+            # able to restore it.
+            if dcc_object.exists():
+                logger.debug(
+                    'Pipeline asset {} already tracked in Unreal, removing!'.format(
+                        dependency_ident
+                    )
+                )
+                delete_ftrack_node(dcc_object.name)
+            # Store asset info
+            dcc_object.create(dcc_object.name)
+            # Have it sync to disk
+            ftrack_object_manager.dcc_object = dcc_object
+        else:
+            # Remove metadata tag if carried along, no pipeline asset info restored
+            if conditional_remove_metadata_tag(
+                asset_path, asset_const.NODE_METADATA_TAG
+            ):
+                logger.debug(
+                    'Removed pipeline asset metadata tag from asset: {}'.format(
+                        asset_path
+                    )
+                )
+    else:
+        logger.debug('No metadata found for asset: {}'.format(ident))
+
+
 def import_dependencies(version_id, event_manager, provided_logger=None):
-    '''Recursive import all dependencies of the given *version_id* using *session* object logging woth *provided_logger*. Returns a list
-    of messages about the import process.'''
+    '''Recursive import all dependencies of the given *version_id* using *session* object logging
+    with *provided_logger*. Returns a list of messages about the import process.'''
 
     result = []
 
