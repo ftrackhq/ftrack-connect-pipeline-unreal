@@ -46,7 +46,10 @@ class UnrealQtAssetManagerClientWidget(QtAssetManagerClientWidget):
         self.resize(600, 800)
 
     def get_theme_background_style(self):
-        return 'ftrack'
+        return 'ftrack' if not self.is_assembler else 'transparent'
+
+    def is_docked(self):
+        False
 
     def get_snapshot_asset_widget_class(self):
         '''Return snapshot asset widget class'''

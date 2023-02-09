@@ -44,6 +44,9 @@ class UnrealQtPublisherClientWidget(QtPublisherClientWidget):
     def get_theme_background_style(self):
         return 'ftrack'
 
+    def is_docked(self):
+        False
+
 
 class UnrealQtBatchPublisherClientWidget(QtBatchPublisherClientWidget):
     '''Unreal multiple versions publisher widget'''
