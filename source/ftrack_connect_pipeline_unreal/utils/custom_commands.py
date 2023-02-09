@@ -1,6 +1,6 @@
 # :coding: utf-8
 # :copyright: Copyright (c) 2014-2022 ftrack
-import threading
+import glob
 import traceback
 from functools import wraps
 import os
@@ -15,11 +15,7 @@ import unreal
 
 import ftrack_api
 
-from ftrack_connect_pipeline.utils import (
-    get_save_path,
-)
-
-from ftrack_connect_pipeline.utils import str_version
+from ftrack_connect_pipeline.utils import str_version, str_context
 from ftrack_connect_pipeline import constants as core_constants
 from ftrack_connect_pipeline.asset.asset_info import FtrackAssetInfo
 
@@ -28,6 +24,7 @@ from ftrack_connect_pipeline_unreal.asset import UnrealFtrackObjectManager
 from ftrack_connect_pipeline_unreal.asset.dcc_object import UnrealDccObject
 
 logger = logging.getLogger(__name__)
+
 
 ### COMMON UTILS ###
 
@@ -261,15 +258,52 @@ def conditional_remove_metadata_tag(node_name, metadata_tag):
 
 def get_all_sequences(as_names=True):
     '''
-    Returns a list of all sequences names
+    Returns a list of all sequence assets used in level. If *as_names* is True, the asset name will be used instead of the asset itself.
     '''
     result = []
-    actors = unreal.EditorActorSubsystem.get_all_level_actors()
+    actors = unreal.EditorLevelLibrary.get_all_level_actors()
     for actor in actors:
         if actor.static_class() == unreal.LevelSequenceActor.static_class():
-            seq = actor.load_sequence()
-            result.append(seq.get_name() if as_names else seq)
+            level_sequence = actor.load_sequence()
+            value = level_sequence.get_name() if as_names else level_sequence
+            if not value in result:
+                result.append(value)
             break
+    return result
+
+
+def get_selected_sequence():
+    '''Return the selected level sequence asset or None if no sequence is selected.'''
+    for (
+        sequence_actor
+    ) in unreal.EditorLevelLibrary.get_selected_level_actors():
+        if (
+            sequence_actor.static_class()
+            == unreal.LevelSequenceActor.static_class()
+        ):
+            return sequence_actor.load_sequence()
+    return None
+
+
+def get_sequence_shots(level_sequence):
+    '''
+    Returns a list of all shot tracks in the given *level_sequence*.
+    '''
+    result = []
+    master_tracks = level_sequence.get_master_tracks()
+    if master_tracks:
+        for track in master_tracks:
+            if (
+                track.static_class()
+                == unreal.MovieSceneCinematicShotTrack.static_class()
+            ):
+                for shot_track in track.get_sections():
+                    if (
+                        shot_track.static_class()
+                        == unreal.MovieSceneCinematicShotSection.static_class()
+                    ):
+                        result.append(shot_track)
+
     return result
 
 
@@ -574,16 +608,7 @@ def import_file(asset_import_task):
     )
 
 
-#### PROJECT LEVEL PUBLISH AND LOAD ####
-
-
-def get_project_state():
-    state_path = os.path.join(
-        asset_const.FTRACK_ROOT_PATH, asset_const.PROJECT_STATE_FILE_NAME
-    )
-    if not os.path.exists(state_path):
-        return None
-    return json.load(open(state_path, 'r'))['assets']
+#### PROJECT LEVEL ASSET PUBLISH AND LOAD ####
 
 
 def get_root_context_id():
@@ -598,7 +623,7 @@ def get_root_context_id():
 
 
 def set_root_context_id(context_id):
-    '''Read and return the project context from the current Unreal project.'''
+    '''Write the project context to the current Unreal project.'''
     context_path = os.path.join(
         asset_const.FTRACK_ROOT_PATH,
         asset_const.ROOT_CONTEXT_STORE_FILE_NAME,
@@ -622,6 +647,9 @@ def set_root_context_id(context_id):
                 context_path
             )
         )
+
+
+#### ASSET PATHS  ####
 
 
 def sanitize_asset_path(asset_path):
@@ -662,41 +690,6 @@ def ftrack_asset_path_exist(root_context_id, asset_path, session):
             return False
         parent_context = child_context
     return True
-
-
-def get_asset_build_form_path(root_context_id, asset_path, session):
-    '''Check if the given *full_ftrack_path* exist in the ftrack platform'''
-    parent_context = session.query(
-        'Context where id is "{}"'.format(root_context_id)
-    ).one()
-    if not parent_context:
-        return
-    full_ftrack_path = sanitize_asset_path(asset_path)
-    # Split asset path in array parts
-    asset_path_parts = full_ftrack_path.split('/')
-    # Get index of the root to support full path and asset path
-    if parent_context['name'] not in asset_path_parts:
-        start_idx = None
-    else:
-        start_idx = asset_path_parts.index(parent_context['name'])
-    if start_idx or start_idx == 0:
-        asset_path_parts = asset_path_parts[start_idx + 1 :]
-
-    child_context = None
-    # Check from the root forward
-    for index, part in enumerate(asset_path_parts):
-        # Check if current part already exists
-        child_context = session.query(
-            'select id,name from Context where parent.id is "{0}" and name="{1}"'.format(
-                parent_context['id'], part
-            )
-        ).first()
-
-        if not child_context:
-            return
-
-        parent_context = child_context
-    return child_context
 
 
 def get_ftrack_ancestors_names(ftrack_object):
@@ -775,6 +768,44 @@ def asset_path_to_filesystem_path(asset_path, root_content_dir=None):
     raise Exception(
         'Could not determine asset "{}" files extension on disk!'.format(path)
     )
+
+
+#### ASSET <> ASSET BUILD SYNCHRONISATION  ####
+
+
+def get_asset_build_form_path(root_context_id, asset_path, session):
+    '''Check if the given *full_ftrack_path* exist in the ftrack platform'''
+    parent_context = session.query(
+        'Context where id is "{}"'.format(root_context_id)
+    ).one()
+    if not parent_context:
+        return
+    full_ftrack_path = sanitize_asset_path(asset_path)
+    # Split asset path in array parts
+    asset_path_parts = full_ftrack_path.split('/')
+    # Get index of the root to support full path and asset path
+    if parent_context['name'] not in asset_path_parts:
+        start_idx = None
+    else:
+        start_idx = asset_path_parts.index(parent_context['name'])
+    if start_idx or start_idx == 0:
+        asset_path_parts = asset_path_parts[start_idx + 1 :]
+
+    child_context = None
+    # Check from the root forward
+    for index, part in enumerate(asset_path_parts):
+        # Check if current part already exists
+        child_context = session.query(
+            'select id,name from Context where parent.id is "{0}" and name="{1}"'.format(
+                parent_context['id'], part
+            )
+        ).first()
+
+        if not child_context:
+            return
+
+        parent_context = child_context
+    return child_context
 
 
 def get_temp_asset_build(root_context_id, asset_path, session):
@@ -966,6 +997,119 @@ def push_asset_build_to_server(root_context_id, asset_path, session):
 
         parent_context = child_context
     return parent_context
+
+
+#### SEQUENCE LEVEL SHOT PUBLIS ####
+
+
+def get_sequence_context_id():
+    '''Read and return the sequence context from the current Unreal project.'''
+    context_path = os.path.join(
+        asset_const.FTRACK_ROOT_PATH,
+        asset_const.SEQUENCE_CONTEXT_STORE_FILE_NAME,
+    )
+    if not os.path.exists(context_path):
+        return None
+    return json.load(open(context_path, 'r'))['context_id']
+
+
+def set_sequence_context_id(context_id):
+    '''Write the sequence context to the current Unreal project.'''
+    context_path = os.path.join(
+        asset_const.FTRACK_ROOT_PATH,
+        asset_const.SEQUENCE_CONTEXT_STORE_FILE_NAME,
+    )
+    if not os.path.exists(asset_const.FTRACK_ROOT_PATH):
+        logger.info(
+            'Creating FTRACK_ROOT_PATH: {}'.format(
+                asset_const.FTRACK_ROOT_PATH
+            )
+        )
+        os.makedirs(asset_const.FTRACK_ROOT_PATH)
+    context_dictionary = {
+        "context_id": context_id,
+        "date": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "description": "The ftrack sequence context, used with Master sequence shot publisher.",
+    }
+    with open(context_path, 'w') as f:
+        json.dump(context_dictionary, f)
+        logger.debug(
+            'Successfully saved Unreal sequence context to: {}'.format(
+                context_path
+            )
+        )
+
+
+#### SEQUENCER SHOT <> SHOT SYNCHRONISATION  ####
+
+
+def push_shot_to_server(
+    sequence_context_id, shot_name, session, start=None, end=None
+):
+    '''Created a shot named *shot_name* in the sequence with the given *sequence_context_id*, using the supplied *session*.
+    If shot exists, return the existing shot.'''
+
+    parent_context = session.query(
+        'Context where id is "{}"'.format(sequence_context_id)
+    ).one()
+    if not parent_context:
+        raise Exception(
+            'Could not find the sequence context object in ftrack, '
+            'Please make sure the Root is created in your project.'
+        )
+
+    sequence_ident = str_context(parent_context)
+
+    # Do not check if it is an actual sequence context, shots are allowed many types context
+
+    # Find shot
+    shot_entity = session.query(
+        'Shot where name is "{}" and parent_id is "{}"'.format(
+            shot_name, parent_context['id']
+        )
+    ).first()
+
+    if not shot_entity:
+        logger.info(
+            'Creating shot "{}" beneath {}'.format(shot_name, sequence_ident)
+        )
+        shot_entity = session.create(
+            'Shot',
+            {
+                'name': shot_name,
+                'parent': parent_context,
+            },
+        )
+        session.commit()
+
+    shot_ident = str_context(shot_entity)
+
+    if 'fstart' in shot_entity['custom_attributes'] and start is not None:
+        prev_start = shot_entity['custom_attributes']['fstart']
+        if prev_start is None:
+            prev_start = -1
+        if start > -1 and prev_start != start:
+            logger.info(
+                'Updating shot {} start frame {} > {}'.format(
+                    shot_ident, prev_start, start
+                )
+            )
+            shot_entity['custom_attributes']['fstart'] = start
+    if 'fend' in shot_entity['custom_attributes'] and end is not None:
+        prev_end = shot_entity['custom_attributes']['fend']
+        if prev_end is None:
+            prev_end = -1
+        if end > -1 and prev_end != end:
+            logger.info(
+                'Updating shot {} end frame {} > {}'.format(
+                    shot_ident, prev_end, end
+                )
+            )
+            shot_entity['custom_attributes']['fend'] = end
+    return shot_entity
+
+
+#### UNREAL DEPENDENCY RESOLVE  ####
 
 
 def get_asset_dependencies(
@@ -1310,6 +1454,91 @@ def render(
     subprocess.call(' '.join(cmdline_args), env=envs)
 
     return output_filepath
+
+
+def find_rendered_media(render_folder, shot_name):
+    '''Find rendered media in the given *render_folder*, will return a tuple with image sequence and video file if found.
+    Otherwise it will return an error message'''
+
+    error_message = 'Render folder does not exist: "{}"'.format(render_folder)
+
+    if render_folder and os.path.exists(render_folder):
+
+        shot_render_folder = os.path.join(render_folder, shot_name)
+
+        error_message = 'Shot folder does not exist: "{}"'.format(
+            shot_render_folder
+        )
+
+        if shot_render_folder and os.path.exists(shot_render_folder):
+
+            error_message = 'No media found in shot folder: "{}"'.format(
+                shot_render_folder
+            )
+
+            # Locate AVI media and possible image sequence on disk
+            movie_path = find_movie(shot_render_folder)
+            sequence_path, start, end = find_image_sequence(shot_render_folder)
+
+            if movie_path or sequence_path:
+                return movie_path, sequence_path, start, end
+
+    return error_message
+
+
+def find_image_sequence(render_folder):
+    '''Try to find a continous image sequence in the *render_folder*, Unreal always names frames "Image.0001.png".
+    Will return the clique parsable expression together with first and last frame number.'''
+
+    if not render_folder or not os.path.exists(render_folder):
+        return None, -1, -1
+
+    # Search folder for images sequence, extract minimum and maximum frame number
+    prefix = None
+    ext = None
+    start = sys.maxsize
+    end = -sys.maxsize
+    for filename in os.listdir(render_folder):
+        parts = filename.split('.')
+        if len(parts) == 3:
+            if prefix is None:
+                prefix = parts[0]
+            elif prefix != parts[0]:
+                continue  # Ignore files with different prefix
+            if ext is None:
+                ext = parts[2]
+            elif ext != parts[2]:
+                continue  # Ignore files with different extension
+            try:
+                frame = int(parts[1])
+                if frame < start:
+                    start = frame
+                if frame > end:
+                    end = frame
+            except:
+                continue
+    return (
+        '{}.%04d.{} [{}-{}]'.format(
+            os.path.join(render_folder, prefix),
+            ext,
+            start,
+            end,
+        ),
+        start,
+        end,
+    )
+
+
+def find_movie(render_folder):
+    if not render_folder or not os.path.exists(render_folder):
+        return None
+
+    avi_files = glob.glob(os.path.join(render_folder, '*.avi'))
+
+    if avi_files:
+        return avi_files[0]
+
+    return None
 
 
 #### MISC ####

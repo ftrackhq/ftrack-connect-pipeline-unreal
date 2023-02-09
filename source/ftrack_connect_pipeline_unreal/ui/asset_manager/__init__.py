@@ -5,8 +5,7 @@ import logging
 
 from Qt import QtWidgets, QtCore
 
-from ftrack_connect_pipeline_qt.utils import clear_layout, set_property
-from ftrack_connect_pipeline_qt.ui.asset_manager.asset_manager import (
+from ftrack_connect_pipeline_qt.ui.asset_manager import (
     AssetManagerWidget,
     AssetManagerListWidget,
     AssetWidget,
