@@ -435,7 +435,7 @@ class UnrealAssetBatchPublisherWidget(BatchPublisherBaseWidget):
 
             metadata = {'dependencies': asset_infos}
             with open(component_path, 'w') as f:
-                json.dump(asset_infos, f)
+                json.dump(metadata, f)
 
             self.logger.debug('Metadata to store @ "{}"!'.format(metadata))
             location = self.session.pick_location()
