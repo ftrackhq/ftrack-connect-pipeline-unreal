@@ -143,7 +143,6 @@ class UnrealAssetManagerSnapshotListWidget(AssetManagerListWidget):
     def rebuild(self, model_data_change=None, add=False):
         '''(Override) Also add untracked dependencies'''
         # Only rebuild if rows has been inserted
-        print('@@@ rebuild', model_data_change, add)
         if model_data_change and model_data_change != 'rowsInserted':
             # Don't bother add untracked dependencies if not adding new rows
             return super(UnrealAssetManagerSnapshotListWidget, self).rebuild(
@@ -174,7 +173,6 @@ class UnrealAssetManagerSnapshotListWidget(AssetManagerListWidget):
                 os.path.splitext(ass)[0]
                 for ass in unreal_utils.get_current_scene_objects()
             ]
-            print('@@@ len: ', len(assets))
             # Remove already tracked assets
             for asset_widget in asset_widgets:
                 if asset_widget.asset_path in assets:
