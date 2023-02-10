@@ -33,6 +33,7 @@ from ftrack_connect_pipeline_unreal.constants import asset as asset_const
 from ftrack_connect_pipeline_unreal.utils import (
     custom_commands as unreal_utils,
 )
+import tempfile
 
 
 class UnrealAssetBatchPublisherWidget(BatchPublisherBaseWidget):
@@ -67,6 +68,7 @@ class UnrealAssetBatchPublisherWidget(BatchPublisherBaseWidget):
     ):
         self._parent_asset_version_id = parent_asset_version_id
         self._parent_asset = parent_asset
+        self.dependencies_published = False
         super(UnrealAssetBatchPublisherWidget, self).__init__(
             client, initial_items, level=level, parent=parent
         )
@@ -383,75 +385,73 @@ class UnrealAssetBatchPublisherWidget(BatchPublisherBaseWidget):
                     all_published = False
                     break
             if all_published:
-                all_items = self.item_list.items()
-                self.logger.info(
-                    'All assets have been published, tracking {} dependencies as list of asset infos on "{}"'.format(
-                        len(all_items), self.parent_asset
-                    )
-                )
-                asset_infos = []
-                # Collect asset infos from all items
-                for item, item_widget in all_items:
-                    # Expand
-                    (
-                        asset_path,
-                        filesystem_asset_path,
-                        definition,
-                        dependencies,
-                        dcc_object_name,
-                        param_dict,
-                    ) = item
-                    if item_widget.checked:
-                        # This asset has been published, fetch its asset info
-                        (
-                            unused_dcc_object_name,
-                            asset_info,
-                        ) = unreal_utils.get_asset_info(
-                            asset_path, snapshot=True
-                        )
-                    else:
-                        # Use the previously stored asset info, if any
-                        asset_info = param_dict
-                    if asset_info is not None:
-                        asset_infos.append(asset_info)
-                if len(asset_infos) > 0:
-                    asset_version = self.session.query(
-                        'AssetVersion where id is "{0}"'.format(
-                            self.parent_asset_version_id
-                        )
-                    ).one()
-                    metadata = {}
-                    if (
-                        core_constants.PIPELINE_METADATA_KEY
-                        in asset_version.get('metadata')
-                    ):
-                        metadata = json.loads(
-                            asset_version['metadata'][
-                                core_constants.PIPELINE_METADATA_KEY
-                            ]
-                        )
-
-                    metadata['dependencies'] = asset_infos
-
-                    self.logger.debug(
-                        'Metadata to store @ "{}"!'.format(metadata)
-                    )
-                    asset_version['metadata'][
-                        core_constants.PIPELINE_METADATA_KEY
-                    ] = json.dumps(metadata)
-                    self.session.commit()
-                else:
-                    self.logger.debug(
-                        'No dependency asset infos to track for "{}"'.format(
-                            self.parent_asset
-                        )
-                    )
+                self.logger.info('All assets have been published')
+                self.publish_dependencies()
         else:
             self.logger.debug(
                 'Not able to track dependencies, no published version id stored for "{}"'.format(
                     self.parent_asset
                 )
             )
+
+    def publish_dependencies(self):
+        '''Publish dependencies for all items'''
+        all_items = self.item_list.items()
+        self.logger.info(
+            'Tracking {} dependencies as list of asset infos on "{}"'.format(
+                len(all_items), self.parent_asset
+            )
+        )
+        asset_infos = []
+        # Collect asset infos from all items
+        for item, item_widget in all_items:
+            # Expand
+            (
+                asset_path,
+                filesystem_asset_path,
+                definition,
+                dependencies,
+                dcc_object_name,
+                param_dict,
+            ) = item
+            if item_widget.checked:
+                # This asset has been published, fetch its asset info
+                (
+                    unused_dcc_object_name,
+                    asset_info,
+                ) = unreal_utils.get_asset_info(asset_path, snapshot=True)
+            else:
+                # Use the previously stored asset info, if any
+                asset_info = param_dict
+            if asset_info is not None:
+                asset_infos.append(asset_info)
+        if len(asset_infos) > 0:
+            asset_version = self.session.query(
+                'AssetVersion where id is "{0}"'.format(
+                    self.parent_asset_version_id
+                )
+            ).one()
+            component_path = tempfile.NamedTemporaryFile(suffix='.json').name
+
+            metadata = {'dependencies': asset_infos}
+            with open(component_path, 'w') as f:
+                json.dump(metadata, f)
+
+            self.logger.debug('Metadata to store @ "{}"!'.format(metadata))
+            location = self.session.pick_location()
+            asset_version.create_component(
+                component_path,
+                data={'name': 'dependencies'},
+                location=location,
+            )
+            self.session.commit()
+        else:
+            self.logger.debug(
+                'No dependency asset infos to track for "{}"'.format(
+                    self.parent_asset
+                )
+            )
+        self.dependencies_published = True
 
 
 class UnrealBatchPublisherAssetListWidget(BatchPublisherListBaseWidget):
@@ -589,11 +589,8 @@ class UnrealAssetWidget(ItemBaseWidget):
             do_publish = False
             # Check if the asset has changed since last publish
             if os.path.exists(asset_filesystem_path):
-                file_size = os.path.getsize(asset_filesystem_path)
                 mod_date = os.path.getmtime(asset_filesystem_path)
-                if file_size != param_dict.get(
-                    asset_const.FILE_SIZE
-                ) or mod_date != param_dict.get(asset_const.MOD_DATE):
+                if mod_date != param_dict.get(asset_const.MOD_DATE):
                     do_publish = True
 
         self.checked = do_publish
