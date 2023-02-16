@@ -42,8 +42,15 @@ def on_launch_pipeline_unreal(session, event):
     plugin_hook = os.path.join(definitions_plugin_hook, 'unreal', 'python')
     unreal_script_path = os.path.join(plugin_base_dir, 'resource', 'scripts')
 
+    unreal_definitions_path = os.path.join(
+        plugin_base_dir, 'resource', 'definitions'
+    )
+
     pipeline_unreal_base_data['integration']['env'] = {
-        'FTRACK_EVENT_PLUGIN_PATH.prepend': plugin_hook,
+        'FTRACK_EVENT_PLUGIN_PATH.prepend': os.path.pathsep.join(
+            [plugin_hook, unreal_definitions_path]
+        ),
+        'FTRACK_DEFINITION_PATH.prepend': unreal_definitions_path,
         'PYTHONPATH.prepend': os.path.pathsep.join(
             [python_dependencies, unreal_script_path]
         ),
