@@ -45,8 +45,9 @@ def on_launch_pipeline_unreal(session, event):
         plugin_base_dir, 'resource', 'bootstrap'
     )
 
-    unreal_bootstrap_plugin_path = os.path.join(unreal_bootstrap_path, 'plugins')
-
+    unreal_bootstrap_plugin_path = os.path.join(
+        unreal_bootstrap_path, 'plugins'
+    )
 
     unreal_definitions_path = os.path.join(
         plugin_base_dir, 'resource', 'definitions'
