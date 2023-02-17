@@ -261,22 +261,23 @@ def connect_object(node_name, asset_info, logger):
 
     # As it has been saved, restore modification date to be the same as the imported component.
     # Otherwise asset will appear out of sync in ftrack.
-    component_path = asset_info.get(asset_const.COMPONENT_PATH)
-    asset_filesystem_path = asset_path_to_filesystem_path(node_name)
-    file_size_remote = os.path.getsize(component_path)
-    file_size_local = os.path.getsize(asset_filesystem_path)
-    mod_date_remote = os.path.getmtime(component_path)
+    if asset_info.get(asset_const.IS_SNAPSHOT):
+        component_path = asset_info.get(asset_const.COMPONENT_PATH)
+        asset_filesystem_path = asset_path_to_filesystem_path(node_name)
+        file_size_remote = os.path.getsize(component_path)
+        file_size_local = os.path.getsize(asset_filesystem_path)
+        mod_date_remote = os.path.getmtime(component_path)
 
-    stat = os.stat(asset_filesystem_path)
-    os.utime(asset_filesystem_path, times=(stat.st_atime, mod_date_remote))
-    logger.debug(
-        'Restored file modification time: {} on asset: {} (size: {}, local size: {})'.format(
-            mod_date_remote,
-            asset_filesystem_path,
-            file_size_remote,
-            file_size_local,
+        stat = os.stat(asset_filesystem_path)
+        os.utime(asset_filesystem_path, times=(stat.st_atime, mod_date_remote))
+        logger.debug(
+            'Restored file modification time: {} on asset: {} (size: {}, local size: {})'.format(
+                mod_date_remote,
+                asset_filesystem_path,
+                file_size_remote,
+                file_size_local,
+            )
         )
-    )
 
 
 def conditional_remove_metadata_tag(node_name, metadata_tag):

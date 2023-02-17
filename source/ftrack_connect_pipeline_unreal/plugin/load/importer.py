@@ -49,9 +49,15 @@ class UnrealLoaderImporterPlugin(
         return init_nodes_result
 
     def load_asset(self, context_data=None, data=None, options=None):
-        '''(Override) Load without connecting objects'''
+        '''(Override) Load without connecting objects for assets'''
 
         asset_info = options.get('asset_info')
+        if not asset_info.get(asset_const.IS_SNAPSHOT):
+            # Pipeline asset load, proceed as normal
+            return super(UnrealLoaderImporterPlugin, self).load_asset(
+                context_data, data, options
+            )
+
         self.asset_info = asset_info
         dcc_object = self.DccObject(
             from_id=asset_info[asset_const.ASSET_INFO_ID]
