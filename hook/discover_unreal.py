@@ -37,15 +37,21 @@ def on_launch_pipeline_unreal(session, event):
 
     pipeline_unreal_base_data = on_discover_pipeline_unreal(session, event)
 
-    # Discover plugins from definitions
-    definitions_plugin_hook = os.getenv("FTRACK_DEFINITION_PLUGIN_PATH")
-    plugin_hook = os.path.join(definitions_plugin_hook, 'unreal', 'python')
-    unreal_script_path = os.path.join(plugin_base_dir, 'resource', 'scripts')
+    unreal_plugins_path = os.path.join(
+        plugin_base_dir, 'resource', 'plugins', 'python'
+    )
+
+    unreal_bootstrap_path = os.path.join(
+        plugin_base_dir, 'resource', 'bootstrap'
+    )
+
+    unreal_bootstrap_plugin_path = os.path.join(unreal_bootstrap_path, 'plugins')
+
 
     pipeline_unreal_base_data['integration']['env'] = {
-        'FTRACK_EVENT_PLUGIN_PATH.prepend': plugin_hook,
+        'FTRACK_EVENT_PLUGIN_PATH.prepend': unreal_plugins_path,
         'PYTHONPATH.prepend': os.path.pathsep.join(
-            [python_dependencies, unreal_script_path]
+            [python_dependencies, unreal_bootstrap_path]
         ),
         'QT_PREFERRED_BINDING.set': 'PySide2',
     }
@@ -56,7 +62,7 @@ def on_launch_pipeline_unreal(session, event):
     engine_path = os.path.realpath(
         os.path.join(unreal_editor_exe, '..', '..', '..')
     )
-    script_source = os.path.join(unreal_script_path, 'init_unreal.py')
+    script_source = os.path.join(unreal_bootstrap_path, 'init_unreal.py')
     script_destination = os.path.join(
         engine_path, 'Content', 'Python', 'init_unreal.py'
     )
@@ -94,7 +100,7 @@ def on_launch_pipeline_unreal(session, event):
             shutil.copy(script_source, script_destination)
             logger.info('Installed init script.')
             # Also copy icon
-            icon_source = os.path.join(unreal_script_path, 'UEFtrack.ico')
+            icon_source = os.path.join(unreal_bootstrap_path, 'UEFtrack.ico')
             icon_destination = os.path.join(
                 engine_path, 'Content', 'Python', 'UEFtrack.ico'
             )
