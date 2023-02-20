@@ -1,0 +1,105 @@
+{
+  "type": "opener",
+  "name": "Asset Opener",
+  "asset_type": "script",
+  "host_type": "unreal",
+  "ui_type": "qt",
+  "contexts": [
+    {
+      "name": "main",
+      "stages": [
+        {
+          "name": "context",
+          "plugins":[
+            {
+              "name": "context selector",
+              "plugin": "common_passthrough_opener_context",
+              "widget": "common_default_opener_context"
+            },
+            {
+              "name": "root context selector",
+              "plugin": "common_passthrough_opener_context",
+              "widget": "unreal_root_opener_context"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "name": "snapshot",
+      "file_formats": [".uasset"],
+      "stages": [
+        {
+          "name": "collector",
+          "plugins":[
+            {
+              "name": "Collect components from context",
+              "plugin": "common_context_opener_collector"
+            }
+          ]
+        },
+        {
+          "name": "importer",
+          "plugins":[
+            {
+              "name": "Open Unreal Asset",
+              "plugin": "unreal_asset_opener_importer",
+              "options": {
+                "dependencies": true
+              }
+            }
+          ]
+        },
+        {
+          "name": "post_importer",
+          "plugins":[
+            {
+              "name": "unreal",
+              "plugin": "common_passthrough_opener_post_importer"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+"finalizers": [
+    {
+      "name": "main",
+      "stages": [
+        {
+          "name": "pre_finalizer",
+          "visible": false,
+          "plugins":[
+            {
+              "name": "pre_finalizer",
+              "plugin": "common_passthrough_opener_pre_finalizer",
+              "optional": true
+            }
+          ]
+        },
+        {
+          "name": "finalizer",
+          "visible": false,
+          "plugins":[
+            {
+              "name": "finalizer",
+              "plugin": "common_passthrough_opener_finalizer"
+            }
+          ]
+        },
+        {
+          "name": "post_finalizer",
+          "visible": false,
+          "plugins":[
+            {
+              "name": "Post finalizer",
+              "plugin": "common_passthrough_opener_post_finalizer"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
