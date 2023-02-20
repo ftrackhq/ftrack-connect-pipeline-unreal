@@ -1,0 +1,111 @@
+{
+  "type": "publisher",
+  "name": "Level Publisher",
+  "asset_type": "scene",
+  "host_type": "unreal",
+  "ui_type": "qt",
+  "contexts": [
+    {
+      "name": "main",
+      "stages": [
+        {
+          "name": "context",
+          "plugins":[
+            {
+              "name": "Unreal root context",
+              "plugin": "unreal_root_publisher_context",
+              "widget": "unreal_root_publisher_context"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "name": "snapshot",
+      "stages": [
+        {
+          "name": "collector",
+          "plugins":[
+            {
+              "name": "collect level",
+              "plugin": "unreal_level_publisher_collector",
+              "widget": "unreal_level_publisher_collector"
+            },
+            {
+              "name": "collect dependencies",
+              "plugin": "unreal_dependencies_publisher_collector",
+              "widget": "unreal_dependencies_publisher_collector",
+              "options" : {
+                "level": true
+              }
+            }
+          ]
+        },
+        {
+          "name": "validator",
+          "plugins":[
+            {
+              "name": "check if a level is selected",
+              "plugin": "common_non_empty_publisher_validator",
+              "options": {
+              }
+            }
+          ]
+        },
+        {
+          "name": "exporter",
+          "plugins":[
+            {
+              "name": "export unreal level",
+              "plugin": "unreal_level_publisher_exporter"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "finalizers": [
+    {
+      "name": "main",
+      "stages": [
+        {
+          "name": "pre_finalizer",
+          "visible": false,
+          "plugins":[
+            {
+              "name": "Pre publish to ftrack server",
+              "plugin": "common_passthrough_publisher_pre_finalizer"
+            }
+          ]
+        },
+        {
+          "name": "finalizer",
+          "visible": false,
+          "plugins":[
+            {
+              "name": "Publish to ftrack server",
+              "plugin": "common_passthrough_publisher_finalizer"
+            }
+          ]
+        },
+        {
+          "name": "post_finalizer",
+          "visible": true,
+          "plugins":[
+            {
+              "name": "Link task to snapshot asset build",
+              "plugin": "unreal_link_publisher_post_finalizer"
+            },
+            {
+              "name": "Publish level dependencies to ftrack server",
+              "plugin": "unreal_dependencies_publisher_post_finalizer",
+              "optional": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "type": "opener",
+  "name": "Level Opener",
+  "asset_type": "scene",
+  "host_type": "unreal",
+  "ui_type": "qt",
+  "contexts": [
+    {
+      "name": "main",
+      "stages": [
+        {
+          "name": "context",
+          "plugins":[
+            {
+              "name": "context selector",
+              "plugin": "common_passthrough_opener_context",
+              "widget": "common_default_opener_context"
+            },
+            {
+              "name": "root context selector",
+              "plugin": "common_passthrough_opener_context",
+              "widget": "unreal_root_opener_context"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "name": "snapshot",
+      "file_formats": [".umap"],
+      "stages": [
+        {
+          "name": "collector",
+          "plugins":[
+            {
+              "name": "Collect components from context",
+              "plugin": "common_context_opener_collector"
+            }
+          ]
+        },
+        {
+          "name": "importer",
+          "plugins":[
+            {
+              "name": "Open Unreal level",
+              "plugin": "unreal_level_opener_importer",
+              "options": {
+                "dependencies": true
+              }
+            }
+          ]
+        },
+        {
+          "name": "post_importer",
+          "plugins":[
+            {
+              "name": "unreal",
+              "plugin": "common_passthrough_opener_post_importer"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "finalizers": [
+    {
+      "name": "main",
+      "stages": [
+        {
+          "name": "pre_finalizer",
+          "visible": false,
+          "plugins":[
+            {
+              "name": "Pre finalizer",
+              "plugin": "common_passthrough_opener_pre_finalizer"
+            }
+          ]
+        },
+        {
+          "name": "finalizer",
+          "visible": true,
+          "plugins":[
+            {
+              "name": "Open in editor",
+              "description" : "Open the level in Unreal Editor after import",
+              "plugin": "unreal_level_opener_finalizer",
+              "optional": true
+            }
+          ]
+        },
+        {
+          "name": "post_finalizer",
+          "visible": false,
+          "plugins":[
+            {
+              "name": "Post finalizer",
+              "plugin": "common_passthrough_opener_post_finalizer"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

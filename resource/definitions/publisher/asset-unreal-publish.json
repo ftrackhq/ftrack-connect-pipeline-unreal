@@ -1,0 +1,129 @@
+{
+  "type": "publisher",
+  "name": "Asset Publisher",
+  "asset_type": "script",
+  "host_type": "unreal",
+  "ui_type": "qt",
+  "contexts": [
+    {
+      "name": "main",
+      "stages": [
+        {
+          "name": "context",
+          "plugins":[
+            {
+              "name": "Unreal root context",
+              "plugin": "unreal_root_publisher_context",
+              "widget": "unreal_root_publisher_context",
+              "options": {
+                "selection": true
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "name": "snapshot",
+      "stages": [
+        {
+          "name": "collector",
+          "plugins":[
+            {
+              "name": "collect asset",
+              "plugin": "unreal_asset_publisher_collector",
+              "widget": "unreal_assets_publisher_collector"
+            },
+            {
+              "name": "collect dependencies",
+              "plugin": "unreal_dependencies_publisher_collector",
+              "widget": "unreal_dependencies_publisher_collector",
+              "options" : {
+                "asset": true
+              }
+            }
+          ]
+        },
+        {
+          "name": "validator",
+          "plugins":[
+            {
+              "name": "Check if an asset is selected",
+              "plugin": "common_non_empty_publisher_validator",
+              "options": {
+              }
+            }
+          ]
+        },
+        {
+          "name": "exporter",
+          "plugins":[
+            {
+              "name": "export unreal asset",
+              "plugin": "unreal_asset_publisher_exporter"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "finalizers": [
+    {
+      "name": "main",
+      "stages": [
+        {
+          "name": "pre_finalizer",
+          "visible": false,
+          "plugins":[
+            {
+              "name": "pre publish to ftrack server",
+              "plugin": "common_passthrough_publisher_pre_finalizer"
+            }
+          ]
+        },
+        {
+          "name": "finalizer",
+          "visible": false,
+          "plugins":[
+            {
+              "name": "publish to ftrack server",
+              "plugin": "common_passthrough_publisher_finalizer"
+            }
+          ]
+        },
+        {
+          "name": "post_finalizer",
+          "visible": true,
+          "plugins":[
+            {
+              "name": "Publish dependency asset info to ftrack server",
+              "plugin": "unreal_assetinfo_publisher_post_finalizer"
+            },{
+              "name": "Track as dependency in unreal project",
+              "plugin": "unreal_dependency_track_publisher_post_finalizer",
+              "description": "Start tracking the asset as a dependency in the local unreal project",
+              "optional": true,
+              "enabled": false,
+              "options": {
+                "definition": "Asset Loader",
+                "plugin_name": "unreal_asset_loader_importer",
+                "method": "init_and_load"
+              }
+            },
+            {
+              "name": "Link task to snapshot asset build",
+              "plugin": "unreal_link_publisher_post_finalizer"
+            },
+            {
+              "name": "Publish asset dependencies to ftrack server",
+              "plugin": "unreal_dependencies_publisher_post_finalizer",
+              "optional": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
