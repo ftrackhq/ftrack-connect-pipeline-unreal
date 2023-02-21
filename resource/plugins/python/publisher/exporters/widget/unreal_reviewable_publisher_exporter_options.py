@@ -107,7 +107,7 @@ class UnrealReviewablePublisherExporterOptionsWidget(DynamicWidget):
         self.layout().addWidget(self.render_rb)
 
         if not 'mode' in self.options:
-            self.set_option_result('render', 'mode')  # Set default mode
+            self.set_option_result('pickup', 'mode')  # Set default mode
         mode = self.options['mode'].lower()
         if mode == 'pickup':
             self.pickup_rb.setChecked(True)
