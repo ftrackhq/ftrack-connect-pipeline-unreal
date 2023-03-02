@@ -78,6 +78,11 @@ def rename_node_with_prefix(node_name, prefix):
     '''This method allow renaming a UObject to put a prefix to work along
     with UE4 naming convention.
       https://github.com/Allar/ue4-style-guide'''
+
+    from ftrack_connect_pipeline_unreal.utils.asset import (
+        asset_path_to_filesystem_path,
+    )
+
     assert node_name is not None, 'No node name/asset path provided'
     object_ad = unreal.EditorAssetLibrary.find_asset_data(node_name)
     new_name_with_prefix = '{}/{}{}'.format(
@@ -87,7 +92,44 @@ def rename_node_with_prefix(node_name, prefix):
     )
 
     if unreal.EditorAssetLibrary.rename_asset(node_name, new_name_with_prefix):
+        # Make sure previous files is deleted from disk, Unreal have a behaviour to leave a stub asset
+        previous_asset_path = asset_path_to_filesystem_path(
+            node_name, throw_on_error=False
+        )
+        if previous_asset_path and os.path.exists(previous_asset_path):
+            logger.warning(
+                'Removing previous asset file: {}'.format(previous_asset_path)
+            )
+            os.remove(previous_asset_path)
         return new_name_with_prefix
+    else:
+        return node_name
+
+
+def rename_node_with_suffix(node_name, suffix):
+    '''Rename asset *node_name* with *suffix*'''
+
+    from ftrack_connect_pipeline_unreal.utils.asset import (
+        asset_path_to_filesystem_path,
+    )
+
+    assert node_name is not None, 'No node name/asset path provided'
+    object_ad = unreal.EditorAssetLibrary.find_asset_data(node_name)
+    new_name_with_suffix = '{}/{}{}'.format(
+        str(object_ad.package_path), str(object_ad.asset_name), suffix
+    )
+
+    if unreal.EditorAssetLibrary.rename_asset(node_name, new_name_with_suffix):
+        # Make sure previous files is deleted from disk, Unreal have a behaviour to leave a stub asset
+        previous_asset_path = asset_path_to_filesystem_path(
+            node_name, throw_on_error=False
+        )
+        if previous_asset_path and os.path.exists(previous_asset_path):
+            logger.warning(
+                'Removing previous asset file: {}'.format(previous_asset_path)
+            )
+            os.remove(previous_asset_path)
+        return new_name_with_suffix
     else:
         return node_name
 
