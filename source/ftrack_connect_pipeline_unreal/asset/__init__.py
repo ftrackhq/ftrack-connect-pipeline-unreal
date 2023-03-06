@@ -2,6 +2,7 @@
 # :copyright: Copyright (c) 2014-2023 ftrack
 
 from ftrack_connect_pipeline.asset import FtrackObjectManager
+
 from ftrack_connect_pipeline_unreal.asset.dcc_object import UnrealDccObject
 
 

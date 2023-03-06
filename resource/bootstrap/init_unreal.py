@@ -41,7 +41,6 @@ if do_load_integration:
 
 
 def load_integration():
-
     from Qt import QtCore, QtWidgets, QtGui
 
     import unreal
@@ -69,8 +68,8 @@ def load_integration():
     from ftrack_connect_pipeline_unreal.client import (
         # open,
         load,
+        publish,
         asset_manager,
-        # publish,
         change_context,
         log_viewer,
     )
@@ -168,7 +167,6 @@ def load_integration():
             )
 
     def initialise():
-
         # TODO : later we need to bring back here all the unreal initialisations
         #  from ftrack-connect-unreal
         # such as frame start / end etc....
@@ -204,6 +202,15 @@ def load_integration():
                 core_constants.ASSET_MANAGER,
                 asset_manager.UnrealQtAssetManagerClientWidget,
                 'Asset Manager',
+                '',
+                True,
+            )
+        )
+        widgets.append(
+            (
+                core_constants.PUBLISHER,
+                publish.UnrealQtPublisherClientWidget,
+                'Publisher',
                 '',
                 True,
             )
