@@ -20,6 +20,7 @@ class UnrealHost(Host):
     engines = {
         'asset_manager': host_engine.UnrealAssetManagerEngine,
         'loader': host_engine.UnrealLoaderEngine,
+        'publisher': host_engine.UnrealPublisherEngine,
     }
 
     def __init__(self, event_manager):
