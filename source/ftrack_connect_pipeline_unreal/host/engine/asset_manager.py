@@ -248,20 +248,21 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
                 new_name = '{}{}'.format(asset_name, suffix)
                 # Duplicate asset
                 temp_node = unreal.EditorAssetLibrary.duplicate_asset(node, new_name)
-                # TODO: instead of save the node name, to compare it later,
-                #  we should be saving the component name maybe and compare that.
-                #  Also I think there is a problem with the redirects, we should
-                #  clean the redirect after duplication.
-                #  Another thing I'm not sure about of the duplication is how
-                #  much time will it take?
                 temp_nodes[node] = temp_node
                 # Load asset and consolidate
                 asset = unreal.EditorAssetLibrary.load_asset(node)
                 unreal.EditorAssetLibrary.consolidate_assets(
                     temp_node, [asset]
                 )
+                #TODO: main problem here is that unreal will not create the
+                # redirector until a couple of seconds after consolidate the
+                # assets, so the clean redirectors will not detect it.
+                # Not sure how can we solve this.
+
                 # Clean up redirectors
-                removed_objects = unreal_utils.clean_redirectors_from_node(temp_node)
+                removed_objects = unreal_utils.clean_redirectors_from_node(
+                    temp_node.get_path_name()
+                )
                 self.logger.debug(
                     "Following redirectors removed for asset {} : {}".format(
                         node, removed_objects
