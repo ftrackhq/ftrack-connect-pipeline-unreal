@@ -148,3 +148,18 @@ def delete_ftrack_node(dcc_object_name):
     if os.path.exists(path_dcc_object_node):
         return os.remove(path_dcc_object_node)
     return False
+
+
+def clean_redirectors_from_node(node_name):
+    ''' Unreal leaves redirector objects some times when an asset is renamed
+    duplicated or consolidated. This method tries to clean the redirectors up'''
+    removed_nodes = []
+    references = unreal.EditorAssetLibrary.find_package_referencers_for_asset(
+        node_name
+    )
+    for _reference in references:
+        asset_data = unreal.EditorAssetLibrary.find_asset_data(_reference)
+        if asset_data.is_redirector():
+            delete_node(_reference)
+            removed_nodes.append(_reference)
+    return removed_nodes

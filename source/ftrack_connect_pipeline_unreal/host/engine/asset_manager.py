@@ -252,12 +252,22 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
                 #  we should be saving the component name maybe and compare that.
                 #  Also I think there is a problem with the redirects, we should
                 #  clean the redirect after duplication.
+                #  Another thing I'm not sure about of the duplication is how
+                #  much time will it take?
                 temp_nodes[node] = temp_node
                 # Load asset and consolidate
                 asset = unreal.EditorAssetLibrary.load_asset(node)
                 unreal.EditorAssetLibrary.consolidate_assets(
                     temp_node, [asset]
                 )
+                # Clean up redirectors
+                removed_objects = unreal_utils.clean_redirectors_from_node(temp_node)
+                self.logger.debug(
+                    "Following redirectors removed for asset {} : {}".format(
+                        node, removed_objects
+                    )
+                )
+
                 status = core_constants.SUCCESS_STATUS
             except Exception as error:
                 message = str(
@@ -296,12 +306,14 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
         )
 
         # Duplicate nodes and consolidate
+        unprocessed_nodes = []
         for node in new_nodes:
             try:
                 temp_node = None
                 if node in list(temp_nodes.keys()):
                     temp_node = temp_nodes[node]
                 if not temp_node:
+                    unprocessed_nodes.append(node)
                     self.logger.debug(
                         "Can't find a matching node "
                         "for node {} in list {}".format(
@@ -314,6 +326,15 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
                 unreal.EditorAssetLibrary.consolidate_assets(
                     asset, [temp_node]
                 )
+                # Clean up redirectors
+                removed_objects = unreal_utils.clean_redirectors_from_node(
+                    asset.get_path_name()
+                )
+                self.logger.debug(
+                    "Following redirectors removed for asset {} : {}".format(
+                        node, removed_objects
+                    )
+                )
             except Exception as error:
                 message = str(
                     'Node: {0} could not be renamed, error: {1}'.format(
@@ -322,6 +343,16 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
                 )
                 self.logger.error(message)
                 status = core_constants.ERROR_STATUS
+        if unprocessed_nodes:
+            self.logger.warning(
+                "Please manually redirect the the unprocessed nodes if needed.\n"
+                "List of unprocessed nodes: {} \n"
+                "Dictionary of old nodes: {}".format(
+                    unprocessed_nodes, temp_nodes
+                )
+            )
+        else:
+            self.logger.debug("All nodes consolidation done.")
 
         end_time = time.time()
         total_time = end_time - start_time
