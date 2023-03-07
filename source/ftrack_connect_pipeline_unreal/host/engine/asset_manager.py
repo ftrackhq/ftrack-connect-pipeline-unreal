@@ -228,7 +228,7 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
                 )
                 or []
         )
-        temp_nodes = []
+        temp_nodes = {}
 
         # Duplicate nodes and consolidate
         for node in nodes:
@@ -248,7 +248,7 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
                 new_name = '{}{}'.format(asset_name, suffix)
                 # Duplicate asset
                 temp_node = unreal.EditorAssetLibrary.duplicate_asset(node, new_name)
-                temp_nodes.append(temp_node)
+                temp_nodes[node] = temp_node
                 # Load asset and consolidate
                 asset = unreal.EditorAssetLibrary.load_asset(node)
                 unreal.EditorAssetLibrary.consolidate_assets(
@@ -293,10 +293,21 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
         # Duplicate nodes and consolidate
         for node in new_nodes:
             try:
+                temp_node = None
+                if node in list(temp_nodes.keys()):
+                    temp_node = temp_nodes[node]
+                if not temp_node:
+                    self.logger.debug(
+                        "Can't find a matching node "
+                        "for node {} in list {}".format(
+                            node, list(temp_nodes.keys())
+                        )
+                    )
+                    continue
                 # Load asset and consolidate
                 asset = unreal.EditorAssetLibrary.load_asset(node)
                 unreal.EditorAssetLibrary.consolidate_assets(
-                    node, [temp_nodes]
+                    asset, [temp_node]
                 )
             except Exception as error:
                 message = str(
