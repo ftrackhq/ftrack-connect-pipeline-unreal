@@ -58,7 +58,7 @@ def connect_object(node_name, asset_info, supplied_logger=None):
 def node_exists(node_name):
     '''Check if node_name exist in the project'''
     for content in unreal.EditorAssetLibrary.list_assets(
-        unreal_constants.PROJECT_SETTINGS_FILE_NAME, recursive=True
+        unreal_constants.GAME_ROOT_PATH, recursive=True
     ):
         if node_name in content:
             return True
