@@ -254,6 +254,7 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
                 unreal.EditorAssetLibrary.consolidate_assets(
                     temp_node, [asset]
                 )
+                status = core_constants.SUCCESS_STATUS
             except Exception as error:
                 message = str(
                     'Can not create temporal node for {}: {}'.format(
