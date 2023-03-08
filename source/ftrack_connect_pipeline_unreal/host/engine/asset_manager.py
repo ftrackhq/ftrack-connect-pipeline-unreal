@@ -365,17 +365,19 @@ class UnrealAssetManagerEngine(AssetManagerEngine):
                 status = core_constants.ERROR_STATUS
 
         # Clean up not consolidated nodes
+        for temp_node in list(temporary_assets.keys()):
+            if unreal_utils.node_exists(temp_node):
+                self.logger.debug("Removing temp node {}".format(temp_node))
+                unreal_utils.delete_node(temp_node)
+
         if unprocessed_nodes:
             self.logger.warning(
-                "Following nodes couldn't be consolidated, removing them. \n"
+                "Following nodes couldn't be consolidated.\n"
                 "List of unprocessed nodes: {} \n"
                 "Dictionary of old nodes: {}".format(
                     unprocessed_nodes, temporary_assets
                 )
             )
-            for node in unprocessed_nodes:
-                if unreal_utils.node_exists(node):
-                    unreal_utils.delete_node(node)
         else:
             self.logger.debug("All nodes consolidation done.")
 
