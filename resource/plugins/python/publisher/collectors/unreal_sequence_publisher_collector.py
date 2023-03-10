@@ -17,10 +17,10 @@ class UnrealSequencePublisherCollectorPlugin(
     def run(self, context_data=None, data=None, options=None):
         '''Return the name of file path from plugin *options*'''
 
-        file_path = options.get('media_path')
+        file_path = options.get('image_sequence_path')
         if not file_path:
             return False, {'message': 'No render media file path chosen.'}
-        return [{'media_path': file_path}]
+        return [{'image_sequence_path': file_path}]
 
 
 def register(api_object, **kw):

@@ -21,29 +21,29 @@ class UnrealSequencePublisherCollectorOptionsWidget(BaseOptionsWidget):
     auto_fetch_on_init = False
 
     @property
-    def media_path(self):
+    def image_sequence_path(self):
         '''Return the media path from options'''
-        result = self.options.get('media_path')
+        result = self.options.get('image_sequence_path')
         if result:
             result = result.strip()
             if len(result) == 0:
                 result = None
         return result
 
-    @media_path.setter
-    def media_path(self, media_path):
-        '''Store *media_path* in options and update widgets'''
-        if media_path is not None and len(media_path) > 0:
-            self.set_option_result(media_path, 'media_path')
+    @image_sequence_path.setter
+    def image_sequence_path(self, image_sequence_path):
+        '''Store *image_sequence_path* in options and update widgets'''
+        if image_sequence_path and len(image_sequence_path) > 0:
+            self.set_option_result(image_sequence_path, 'image_sequence_path')
             # Remember last used path
-            unreal_utils.update_project_settings({'media_path': media_path})
+            unreal_utils.update_project_settings({'image_sequence_path': image_sequence_path})
         else:
-            media_path = '<please choose am image sequence>'
-            self.set_option_result(None, 'media_path')
+            image_sequence_path = '<please choose am image sequence>'
+            self.set_option_result(None, 'image_sequence_path')
 
         # Update UI
-        self._media_path_le.setText(media_path)
-        self._media_path_le.setToolTip(media_path)
+        self._img_seq_le.setText(image_sequence_path)
+        self._img_seq_le.setToolTip(image_sequence_path)
 
     def __init__(
         self,
@@ -76,44 +76,44 @@ class UnrealSequencePublisherCollectorOptionsWidget(BaseOptionsWidget):
             'Pick up rendered image sequence: '
         )
 
-        self._browse_media_path_widget = QtWidgets.QWidget()
-        self._browse_media_path_widget.setLayout(QtWidgets.QHBoxLayout())
-        self._browse_media_path_widget.layout().setContentsMargins(0, 0, 0, 0)
-        self._browse_media_path_widget.layout().setSpacing(0)
+        self._browse_img_seq_widget = QtWidgets.QWidget()
+        self._browse_img_seq_widget.setLayout(QtWidgets.QHBoxLayout())
+        self._browse_img_seq_widget.layout().setContentsMargins(0, 0, 0, 0)
+        self._browse_img_seq_widget.layout().setSpacing(0)
 
-        self._media_path_le = QtWidgets.QLineEdit()
-        self._media_path_le.setReadOnly(True)
+        self._img_seq_le = QtWidgets.QLineEdit()
+        self._img_seq_le.setReadOnly(True)
 
-        self._browse_media_path_widget.layout().addWidget(
-            self._media_path_le, 20
+        self._browse_img_seq_widget.layout().addWidget(
+            self._img_seq_le, 20
         )
 
-        self._browse_media_path_btn = QtWidgets.QPushButton('BROWSE')
-        self._browse_media_path_btn.setObjectName('borderless')
+        self._browse_img_seq_btn = QtWidgets.QPushButton('BROWSE')
+        self._browse_img_seq_btn.setObjectName('borderless')
 
-        self._browse_media_path_widget.layout().addWidget(
-            self._browse_media_path_btn
+        self._browse_img_seq_widget.layout().addWidget(
+            self._browse_img_seq_btn
         )
-        self.layout().addWidget(self._browse_media_path_widget)
+        self.layout().addWidget(self._browse_img_seq_widget)
 
         # Use previous value if available
-        path = self.media_path
+        path = self.image_sequence_path
         if not path or len(path) == 0:
-            path = unreal_utils.get_project_settings().get('media_path')
-        self.media_path = path
+            path = unreal_utils.get_project_settings().get('image_sequence_path')
+        self.image_sequence_path = path
 
         self.report_input()
 
     def post_build(self):
         super(UnrealSequencePublisherCollectorOptionsWidget, self).post_build()
 
-        self._browse_media_path_btn.clicked.connect(
+        self._browse_img_seq_btn.clicked.connect(
             self._show_image_sequence_dialog
         )
 
     def _show_image_sequence_dialog(self):
         '''Shows the file dialog for image sequences'''
-        if not self.media_path:
+        if not self.image_sequence_path:
             start_dir = os.path.realpath(
                 os.path.join(
                     unreal.SystemLibrary.get_project_saved_directory(),
@@ -121,33 +121,33 @@ class UnrealSequencePublisherCollectorOptionsWidget(BaseOptionsWidget):
                 )
             )
         else:
-            start_dir = os.path.dirname(self._media_path_le.text())
+            start_dir = os.path.dirname(self._img_seq_le.text())
 
         # TODO: add all supported file formats
         # supported_file_formats = [".bmp","float",".pcx",".png",".psd",".tga",".jpg",".exr",".dds", ".hdr"]
-        media_path = QtWidgets.QFileDialog.getExistingDirectory(
+        image_sequence_path = QtWidgets.QFileDialog.getExistingDirectory(
             caption='Choose directory containing rendered image sequence',
             dir=start_dir,
             options=QtWidgets.QFileDialog.setNameFilter(("Images (*.png *.xpm *.jpg)"))
         )
 
-        if not media_path:
+        if not image_sequence_path:
             return
 
-        media_path = os.path.normpath(media_path)
+        image_sequence_path = os.path.normpath(image_sequence_path)
 
-        image_sequence_path = unreal_utils.find_image_sequence(media_path)
+        image_sequence_path = unreal_utils.find_image_sequence(image_sequence_path)
 
         if not image_sequence_path:
             dialog.ModalDialog(
                 None,
                 title='Locate rendered image sequence',
                 message='An image sequence on the form "prefix.NNNN.ext" were not found in: {}!'.format(
-                    media_path
+                    image_sequence_path
                 ),
             )
 
-        self.media_path = image_sequence_path
+        self.image_sequence_path = image_sequence_path
 
         self.report_input()
 
@@ -156,13 +156,11 @@ class UnrealSequencePublisherCollectorOptionsWidget(BaseOptionsWidget):
         status = False
         num_objects = (
             1
-            if self.media_path and len(self.media_path) > 0
+            if self.image_sequence_path and len(self.image_sequence_path) > 0
             else 0
         )
         if num_objects > 0:
-            message = '1 {} selected'.format(
-                'image sequence' if self.image_sequence else 'movie'
-            )
+            message = '1 image sequence selected'
             status = True
         else:
             message = 'No media selected!'
