@@ -25,7 +25,7 @@ class UnrealReviewablePublisherExporterPlugin(
         '''Pick up an existing movie, or render a movie from level sequence, given
         in *data* with the given *options*.'''
 
-        media_path = None
+        movie_path = None
         render_path = None
         mode = 'render'
         for collector in data:
@@ -33,12 +33,12 @@ class UnrealReviewablePublisherExporterPlugin(
                 for key, value in result.items():
                     if key == 'mode':
                         mode = value
-                    if key == 'media_path':
-                        media_path = value
+                    if key == 'movie_path':
+                        movie_path = value
                         break
                     if key == 'render_path':
                         render_path = value
-        if mode == 'pickup' and not media_path:
+        if mode == 'pickup' and not movie_path:
             mode = 'render'
         if mode == 'render' and not render_path:
             render_path = unreal_utils.get_project_settings().get('image_sequence_path')
@@ -54,7 +54,7 @@ class UnrealReviewablePublisherExporterPlugin(
 
         self.logger.debug(
             'Using pre-rendered movie path: "{}", copying to temp.'.format(
-                media_path
+                movie_path
             )
         )
 
@@ -62,7 +62,7 @@ class UnrealReviewablePublisherExporterPlugin(
             delete=False, suffix='.mov'
         ).name
 
-        shutil.copy(media_path, temp_movie_path)
+        shutil.copy(movie_path, temp_movie_path)
 
         return [temp_movie_path]
 
