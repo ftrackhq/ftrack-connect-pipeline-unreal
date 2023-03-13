@@ -20,29 +20,29 @@ class UnrealReviewablePublisherCollectorOptionsWidget(BaseOptionsWidget):
     auto_fetch_on_init = False
 
     @property
-    def media_path(self):
+    def movie_path(self):
         '''Return the media path from options'''
-        result = self.options.get('media_path')
+        result = self.options.get('movie_path')
         if result:
             result = result.strip()
             if len(result) == 0:
                 result = None
         return result
 
-    @media_path.setter
-    def media_path(self, media_path):
-        '''Store *media_path* in options and update widgets'''
-        if media_path and len(media_path) > 0:
-            self.set_option_result(media_path, 'media_path')
+    @movie_path.setter
+    def movie_path(self, movie_path):
+        '''Store *movie_path* in options and update widgets'''
+        if movie_path and len(movie_path) > 0:
+            self.set_option_result(movie_path, 'movie_path')
             # Remember last used path
-            unreal_utils.update_project_settings({media_path: media_path})
+            unreal_utils.update_project_settings({'movie_path': movie_path})
         else:
-            media_path = '<please choose a movie>'
-            self.set_option_result(None, 'media_path')
+            movie_path = '<please choose a movie>'
+            self.set_option_result(None, 'movie_path')
 
         # Update UI
-        self._media_path_le.setText(media_path)
-        self._media_path_le.setToolTip(media_path)
+        self._movie_path_le.setText(movie_path)
+        self._movie_path_le.setToolTip(movie_path)
 
     @property
     def render_path(self):
@@ -57,7 +57,7 @@ class UnrealReviewablePublisherCollectorOptionsWidget(BaseOptionsWidget):
 
     @render_path.setter
     def render_path(self, render_path):
-        '''Store *media_path* in options and update widgets'''
+        '''Store *movie_path* in options and update widgets'''
         if render_path and len(render_path) > 0:
             self.set_option_result(render_path, 'render_path')
         else:
@@ -104,31 +104,31 @@ class UnrealReviewablePublisherCollectorOptionsWidget(BaseOptionsWidget):
         bg.addButton(self._pickup_rb)
         self.layout().addWidget(self._pickup_rb)
 
-        self._browse_media_path_widget = QtWidgets.QWidget()
-        self._browse_media_path_widget.setLayout(QtWidgets.QHBoxLayout())
-        self._browse_media_path_widget.layout().setContentsMargins(0, 0, 0, 0)
-        self._browse_media_path_widget.layout().setSpacing(0)
+        self._browse_movie_path_widget = QtWidgets.QWidget()
+        self._browse_movie_path_widget.setLayout(QtWidgets.QHBoxLayout())
+        self._browse_movie_path_widget.layout().setContentsMargins(0, 0, 0, 0)
+        self._browse_movie_path_widget.layout().setSpacing(0)
 
-        self._media_path_le = QtWidgets.QLineEdit()
-        self._media_path_le.setReadOnly(True)
+        self._movie_path_le = QtWidgets.QLineEdit()
+        self._movie_path_le.setReadOnly(True)
 
-        self._browse_media_path_widget.layout().addWidget(
-            self._media_path_le, 20
+        self._browse_movie_path_widget.layout().addWidget(
+            self._movie_path_le, 20
         )
 
-        self._browse_media_path_btn = QtWidgets.QPushButton('BROWSE')
-        self._browse_media_path_btn.setObjectName('borderless')
+        self._browse_movie_path_btn = QtWidgets.QPushButton('BROWSE')
+        self._browse_movie_path_btn.setObjectName('borderless')
 
-        self._browse_media_path_widget.layout().addWidget(
-            self._browse_media_path_btn
+        self._browse_movie_path_widget.layout().addWidget(
+            self._browse_movie_path_btn
         )
-        self.layout().addWidget(self._browse_media_path_widget)
+        self.layout().addWidget(self._browse_movie_path_widget)
 
         # Use previous value if available
-        path = self.media_path
+        path = self.movie_path
         if path is None or len(path) == 0:
-            path = unreal_utils.get_project_settings().get('media_path')
-        self.media_path = path
+            path = unreal_utils.get_project_settings().get('movie_path')
+        self.movie_path = path
 
         self._render_rb = QtWidgets.QRadioButton('Generate from Image sequence')
         bg.addButton(self._render_rb)
@@ -165,8 +165,8 @@ class UnrealReviewablePublisherCollectorOptionsWidget(BaseOptionsWidget):
     def post_build(self):
         super(UnrealReviewablePublisherCollectorOptionsWidget, self).post_build()
 
-        self._browse_media_path_btn.clicked.connect(
-            self._show_media_path_dialog
+        self._browse_movie_path_btn.clicked.connect(
+            self._show_movie_path_dialog
         )
 
         self._render_rb.clicked.connect(self._update_render_mode)
@@ -178,23 +178,23 @@ class UnrealReviewablePublisherCollectorOptionsWidget(BaseOptionsWidget):
         mode = 'pickup'
         if self._render_rb.isChecked():
             mode = 'render'
-            self.set_option_result(None, 'media_path')
+            self.set_option_result(None, 'movie_path')
             self.render_path = unreal_utils.get_project_settings().get('image_sequence_path')
         self.set_option_result(mode, 'mode')
 
-        self._browse_media_path_widget.setVisible(mode == 'pickup')
+        self._browse_movie_path_widget.setVisible(mode == 'pickup')
         self._render_widget.setVisible(mode == 'render')
 
         self.report_input()
 
-    def _show_media_path_dialog(self):
+    def _show_movie_path_dialog(self):
         '''Shows the file dialog for choosing media path'''
         self._show_movie_dialog()
 
     def _show_movie_dialog(self):
         '''Shows the file dialog to select a movie'''
 
-        if not self.media_path:
+        if not self.movie_path:
             start_dir = os.path.realpath(
                 os.path.join(
                     unreal.SystemLibrary.get_project_saved_directory(),
@@ -202,7 +202,7 @@ class UnrealReviewablePublisherCollectorOptionsWidget(BaseOptionsWidget):
                 )
             )
         else:
-            start_dir = os.path.dirname(self._media_path_le.text())
+            start_dir = os.path.dirname(self._movie_path_le.text())
 
         (
             movie_path,
@@ -216,7 +216,7 @@ class UnrealReviewablePublisherCollectorOptionsWidget(BaseOptionsWidget):
         if not movie_path:
             return
 
-        self.media_path = os.path.normpath(movie_path)
+        self.movie_path = os.path.normpath(movie_path)
 
         self.report_input()
 
@@ -226,7 +226,7 @@ class UnrealReviewablePublisherCollectorOptionsWidget(BaseOptionsWidget):
         if self._pickup_rb.isChecked():
             num_objects = (
                 1
-                if self.media_path and len(self.media_path) > 0
+                if self.movie_path and len(self.movie_path) > 0
                 else 0
             )
             if num_objects > 0:
