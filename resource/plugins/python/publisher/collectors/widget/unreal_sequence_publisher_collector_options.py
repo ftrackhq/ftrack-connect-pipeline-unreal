@@ -128,7 +128,7 @@ class UnrealSequencePublisherCollectorOptionsWidget(BaseOptionsWidget):
         image_sequence_path = QtWidgets.QFileDialog.getOpenFileName(
             caption='Choose directory containing rendered image sequence',
             dir=start_dir,
-            filter="Images (*.png *.xpm *.jpg)"
+            filter="Images (*.bmp *.float *.pcx *.png *.psd *.tga *.jpg *.exr *.dds *.hdr)"
         )
 
         if not image_sequence_path:
