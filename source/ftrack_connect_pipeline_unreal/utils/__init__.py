@@ -22,3 +22,4 @@ from ftrack_connect_pipeline_unreal.utils.file import *
 from ftrack_connect_pipeline_unreal.utils.asset import *
 from ftrack_connect_pipeline_unreal.utils.project import *
 from ftrack_connect_pipeline_unreal.utils.sequence import *
+from ftrack_connect_pipeline_unreal.utils.shot import *
