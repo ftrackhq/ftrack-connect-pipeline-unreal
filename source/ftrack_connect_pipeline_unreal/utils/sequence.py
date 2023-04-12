@@ -39,7 +39,8 @@ def get_all_sequences(as_names=True):
 
 
 def get_selected_sequence():
-    '''Return the selected level sequence asset or None if no sequence is selected.'''
+    '''Return the selected level sequence asset or sequence selected in the content browser.
+    Returns None if no sequence is selected.'''
     for (
         sequence_actor
     ) in unreal.EditorLevelLibrary.get_selected_level_actors():
@@ -91,7 +92,7 @@ def get_sequence_context_id():
 
 
 def set_sequence_context_id(context_id):
-    '''Write the sequence context to the current Unreal project.'''
+    '''Write the sequence *context_id* to the current Unreal project.'''
     context_path = os.path.join(
         asset_const.FTRACK_ROOT_PATH,
         asset_const.SEQUENCE_CONTEXT_STORE_FILE_NAME,

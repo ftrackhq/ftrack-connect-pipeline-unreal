@@ -7,6 +7,14 @@
 Release Notes
 *************
 
+.. release:: upcoming
+
+    .. change:: new
+        :tags: publisher
+
+        Shot publisher supporting publish of multiple shots as image sequences and reviewables from a master sequence.
+
+
 .. release:: 1.0.0
     :date: 2023-04-05
 

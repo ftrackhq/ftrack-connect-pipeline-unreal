@@ -21,7 +21,7 @@ from ftrack_connect_pipeline_qt.ui.utility.widget.base.accordion_base import (
 )
 from ftrack_connect_pipeline_qt.ui.asset_manager.model import AssetListModel
 from ftrack_connect_pipeline_unreal.ui.factory.base import (
-    UnrealBatchPublisherItemWidgetBaseFactory,
+    UnrealBatchPublisherItemWidgetFactoryBase,
 )
 from ftrack_connect_pipeline_qt.utils import (
     set_property,
@@ -33,7 +33,11 @@ from ftrack_connect_pipeline_qt.ui.asset_manager.base import (
 )
 
 
-class BatchPublisherBaseWidget(QtWidgets.QWidget):
+class UnrealBatchPublisherWidgetBase(QtWidgets.QWidget):
+    '''Base widget of the batch publisher widget
+
+    Candidate to be merged to framework core QT publisher client widget'''
+
     listWidgetCreated = QtCore.Signal(object)
     itemPublished = QtCore.Signal(object)
 
@@ -49,10 +53,12 @@ class BatchPublisherBaseWidget(QtWidgets.QWidget):
 
     @property
     def session(self):
+        '''Return session instance.'''
         return self._client.session
 
     @property
     def logger(self):
+        '''Return logger instance.'''
         return self._client.logger
 
     def __init__(self, client, level=None, parent=None):
@@ -60,7 +66,7 @@ class BatchPublisherBaseWidget(QtWidgets.QWidget):
         self._level = level
         self.item_list = None
         self.total = self.failed = 0
-        super(BatchPublisherBaseWidget, self).__init__(parent=parent)
+        super(UnrealBatchPublisherWidgetBase, self).__init__(parent=parent)
         self.pre_build()
         self.build()
         self.post_build()
@@ -208,7 +214,7 @@ class BatchPublisherBaseWidget(QtWidgets.QWidget):
         self.client.prepareNextItem.emit()
 
     def prepare_item(self, item_widget):
-        '''Prepare publish of a single item'''
+        '''Prepare publish of *item_widget*'''
 
         self.logger.info('Publishing {}'.format(item_widget.get_ident()))
         progress_widget = self.client.progress_widget
@@ -256,7 +262,7 @@ class BatchPublisherBaseWidget(QtWidgets.QWidget):
         self.client.queueNextItem.emit(item_widget, definition)
 
     def run_item(self, item_widget, definition):
-        '''Publish a single item'''
+        '''Publish single item *item_widget* with *definition*'''
 
         try:
             factory = item_widget.factory
@@ -322,8 +328,10 @@ class BatchPublisherBaseWidget(QtWidgets.QWidget):
         return total, succeeded, failed
 
 
-class BatchPublisherListBaseWidget(AssetListWidget):
-    '''Base for item lists within the batch publisher'''
+class BatchPublisherListWidgetBase(AssetListWidget):
+    '''Base for item lists within the batch publisher
+
+    Candidate to be merged to framework core QT publisher client widget'''
 
     @property
     def level(self):
@@ -332,13 +340,13 @@ class BatchPublisherListBaseWidget(AssetListWidget):
 
     def __init__(self, batch_publisher_widget, parent=None):
         self._batch_publisher_widget = batch_publisher_widget
-        super(BatchPublisherListBaseWidget, self).__init__(
+        super(BatchPublisherListWidgetBase, self).__init__(
             self._batch_publisher_widget.model,
             parent=parent,
         )
 
     def post_build(self):
-        super(BatchPublisherListBaseWidget, self).post_build()
+        super(BatchPublisherListWidgetBase, self).post_build()
         self._model.rowsInserted.connect(self._on_items_added)
         self._model.modelReset.connect(self._on_items_added)
         self._model.rowsRemoved.connect(self._on_items_added)
@@ -356,8 +364,10 @@ class BatchPublisherListBaseWidget(AssetListWidget):
         raise NotImplementedError()
 
 
-class ItemBaseWidget(AccordionBaseWidget):
-    '''Base widget representation of an item within the batch publisher'''
+class UnrealItemWidgetBase(AccordionBaseWidget):
+    '''Base widget representation of an item within the batch publisher
+
+    Candidate to be merged to framework core QT publisher client widget'''
 
     @property
     def index(self):
@@ -438,10 +448,12 @@ class ItemBaseWidget(AccordionBaseWidget):
 
     @property
     def session(self):
+        '''Return the session'''
         return self._batch_publisher_widget.session
 
     @property
     def logger(self):
+        '''Return the logger'''
         return self.batch_publisher_widget.logger
 
     def __init__(
@@ -463,7 +475,7 @@ class ItemBaseWidget(AccordionBaseWidget):
         self._item_id = str(uuid.uuid4())
         self._has_run = False
         self.showing_options = False
-        super(ItemBaseWidget, self).__init__(
+        super(UnrealItemWidgetBase, self).__init__(
             AccordionBaseWidget.SELECT_MODE_LIST,
             AccordionBaseWidget.CHECK_MODE_CHECKBOX,
             event_manager=event_manager,
@@ -520,7 +532,7 @@ class ItemBaseWidget(AccordionBaseWidget):
         # Options widget,initialize its factory
         upper_layout.addWidget(self.init_options_button())
 
-        self._widget_factory = UnrealBatchPublisherItemWidgetBaseFactory(
+        self._widget_factory = UnrealBatchPublisherItemWidgetFactoryBase(
             self.event_manager, self._batch_publisher_widget.client.ui_types
         )
 
@@ -546,7 +558,7 @@ class ItemBaseWidget(AccordionBaseWidget):
         self.info_message_widget.setVisible(False)
 
     def post_build(self):
-        super(ItemBaseWidget, self).post_build()
+        super(UnrealItemWidgetBase, self).post_build()
         self.factory.widgetRunPlugin.connect(
             self.batch_publisher_widget.client._on_run_plugin
         )

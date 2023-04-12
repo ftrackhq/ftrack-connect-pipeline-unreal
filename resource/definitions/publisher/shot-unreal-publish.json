@@ -12,8 +12,8 @@
           "name": "context",
           "plugins":[
             {
-              "name": "Unreal sequence context",
-              "plugin": "unreal_sequence_publisher_context"
+              "name": "Unreal shot context",
+              "plugin": "unreal_shot_publisher_context"
             }
           ]
         }

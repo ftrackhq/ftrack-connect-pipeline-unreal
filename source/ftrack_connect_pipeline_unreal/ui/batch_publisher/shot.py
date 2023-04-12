@@ -23,25 +23,28 @@ from ftrack_connect_pipeline_qt.ui.utility.widget import (
 )
 
 from ftrack_connect_pipeline_unreal.ui.batch_publisher.base import (
-    BatchPublisherBaseWidget,
-    ItemBaseWidget,
-    BatchPublisherListBaseWidget,
+    UnrealBatchPublisherWidgetBase,
+    UnrealItemWidgetBase,
+    BatchPublisherListWidgetBase,
 )
 from ftrack_connect_pipeline_qt.utils import clear_layout, set_property
 
 from ftrack_connect_pipeline_unreal import utils as unreal_utils
 
 
-class UnrealShotPublisherWidget(BatchPublisherBaseWidget):
+class UnrealShotPublisherWidgetUnreal(UnrealBatchPublisherWidgetBase):
     def __init__(
         self,
         client,
         parent=None,
     ):
-        super(UnrealShotPublisherWidget, self).__init__(client, parent=parent)
+        super(UnrealShotPublisherWidgetUnreal, self).__init__(
+            client, parent=parent
+        )
 
     @property
     def capture_folder(self):
+        '''Return the capture folder'''
         return self._capture_folder_input.text()
 
     def build(self):
@@ -116,7 +119,7 @@ class UnrealShotPublisherWidget(BatchPublisherBaseWidget):
 
         self.layout().addWidget(line.Line(style='solid'))
 
-        super(UnrealShotPublisherWidget, self).build()
+        super(UnrealShotPublisherWidgetUnreal, self).build()
 
     def _update_info_label(self):
         '''(Override) Update info label'''
@@ -131,7 +134,8 @@ class UnrealShotPublisherWidget(BatchPublisherBaseWidget):
             )
 
     def post_build(self):
-        super(UnrealShotPublisherWidget, self).post_build()
+        '''(Override)'''
+        super(UnrealShotPublisherWidgetUnreal, self).post_build()
         if self.sequence_context_selector:
             self.sequence_context_selector.entityChanged.connect(
                 self.on_sequence_context_changed
@@ -171,14 +175,14 @@ class UnrealShotPublisherWidget(BatchPublisherBaseWidget):
         )
 
     def on_sequence_context_changed(self, context):
-        '''Handle context change - store it with current Unreal project'''
+        '''Handle sequence change - store *context* with current Unreal project'''
         unreal_utils.set_sequence_context_id(context['id'])
         self.update_items(
             self.sequence_context_selector.context_id, self.capture_folder
         )
 
     def build_items(self, shot_tracks, definition):
-        '''Build list of items (assets) to publish based on selected *definition*'''
+        '''Build list of shots to publish based on *shot_tracks* and selected *definition*'''
         self.warn_missing_data.setVisible(False)
         result = []
 
@@ -209,10 +213,10 @@ class UnrealShotPublisherWidget(BatchPublisherBaseWidget):
             result.append((shot_track, definition_fragment, {}))
 
         # Store and present
-        self.set_items(result, UnrealBatchPublisherShotListWidget)
+        self.set_items(result, UnrealShotPublisherListWidgetBase)
 
     def update_items(self, sequence_context_id, capture_folder):
-        '''(Override) Update list of items to publish'''
+        '''(Override) Update list of items to publish based on *sequence_context_id* and *capture_folder*'''
         if self.item_list:
             for row, widget in enumerate(self.item_list.assets):
                 index = self.model.createIndex(row, 0, self.model)
@@ -221,7 +225,7 @@ class UnrealShotPublisherWidget(BatchPublisherBaseWidget):
                 )
 
     def can_publish(self):
-        '''(Override) Check if we can publish'''
+        '''(Override) Return true if there is anything to publish'''
         # Check that project context is set
         if self.sequence_context_selector.context_id is None:
             dialog.ModalDialog(
@@ -242,7 +246,7 @@ class UnrealShotPublisherWidget(BatchPublisherBaseWidget):
         return False
 
     def prepare_run_definition(self, item):
-        '''(Override) Called before *definition* is executed.'''
+        '''(Override) Called before *definition* is executed, injects asset and sequence data into definition'''
 
         # Raise batch publisher dialog as DCC might have come ontop of it
         self.client.activateWindow()
@@ -316,14 +320,14 @@ class UnrealShotPublisherWidget(BatchPublisherBaseWidget):
         pass
 
 
-class UnrealBatchPublisherShotListWidget(BatchPublisherListBaseWidget):
+class UnrealShotPublisherListWidgetBase(BatchPublisherListWidgetBase):
     def __init__(self, batch_publisher_widget, parent=None):
-        super(UnrealBatchPublisherShotListWidget, self).__init__(
+        super(UnrealShotPublisherListWidgetBase, self).__init__(
             batch_publisher_widget, parent=parent
         )
 
     def rebuild(self):
-        '''Add all shots again from model.'''
+        '''Add all shots from model to list, removing existing contents.'''
         clear_layout(self.layout())
         for row in range(self.model.rowCount()):
             index = self.model.createIndex(row, 0, self.model)
@@ -335,7 +339,7 @@ class UnrealBatchPublisherShotListWidget(BatchPublisherListBaseWidget):
             ) = self.model.data(index)
 
             # Build item widget
-            item_widget = UnrealShotWidget(
+            item_widget = UnrealShotWidgetUnreal(
                 index,
                 self._batch_publisher_widget,
                 self.model.event_manager,
@@ -348,19 +352,13 @@ class UnrealBatchPublisherShotListWidget(BatchPublisherListBaseWidget):
 
             item_widget.set_data(shot_track, definition, metadata)
             self.add_widget(item_widget)
-            item_widget.clicked.connect(
-                partial(self.item_clicked, item_widget)
-            )
 
         self.layout().addWidget(QtWidgets.QLabel(), 1000)
         self.refreshed.emit()
 
-    def item_clicked(self, event, item_widget):
-        pass
 
-
-class UnrealShotWidget(ItemBaseWidget):
-    '''Unreal asset widget to be used in batch publisher list widget'''
+class UnrealShotWidgetUnreal(UnrealItemWidgetBase):
+    '''Unreal single shot widget to be used in shot publisher list widget'''
 
     def __init__(
         self,
@@ -370,7 +368,7 @@ class UnrealShotWidget(ItemBaseWidget):
         parent=None,
     ):
         self._name = None
-        super(UnrealShotWidget, self).__init__(
+        super(UnrealShotWidgetUnreal, self).__init__(
             index,
             batch_publisher_widget,
             event_manager,
@@ -411,7 +409,7 @@ class UnrealShotWidget(ItemBaseWidget):
         definition,
         metadata,
     ):
-        '''(Override) Set data to be displayed in widget'''
+        '''(Override) Set data to be displayed in widget based on *shot_track*, *definition* and *metadata*'''
         self._widget_factory.batch_id = self.item_id
 
         # Get the shot name from the shot track
@@ -424,7 +422,7 @@ class UnrealShotWidget(ItemBaseWidget):
         self._ident_widget_frames.setText(
             '[{}-{}]'.format(self._start, self._end)
         )
-        super(UnrealShotWidget, self).set_data(
+        super(UnrealShotWidgetUnreal, self).set_data(
             shot_track, definition, metadata
         )
 
@@ -433,7 +431,7 @@ class UnrealShotWidget(ItemBaseWidget):
         return self._name
 
     def update_item(self, item_data, sequence_context_id, capture_folder):
-        '''A *sequence_context_id* and *capture_folder* has been set, evaluate'''
+        '''A *sequence_context_id* and *capture_folder* has been set, evaluate given the *item_data*'''
 
         (
             shot_track,

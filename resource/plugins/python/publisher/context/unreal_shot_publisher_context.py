@@ -8,10 +8,10 @@ from ftrack_connect_pipeline import plugin
 from ftrack_connect_pipeline_unreal import utils as unreal_utils
 
 
-class UnrealSequencePublisherContextPlugin(plugin.PublisherContextPlugin):
-    '''Unreal sequence publisher context plugin'''
+class UnrealShotPublisherContextPlugin(plugin.PublisherContextPlugin):
+    '''Unreal shot publisher context plugin'''
 
-    plugin_name = 'unreal_sequence_publisher_context'
+    plugin_name = 'unreal_shot_publisher_context'
 
     def run(self, context_data=None, data=None, options=None):
         '''Find out the sequence context id and shot name and sync the shot to ftrack'''
@@ -28,12 +28,10 @@ class UnrealSequencePublisherContextPlugin(plugin.PublisherContextPlugin):
                 end=options.get('end'),
             )
             options['asset_parent_context_id'] = shot['id']
-            self.logger.info(
-                'asset_build {} structure checks done'.format(shot['name'])
-            )
+            self.logger.info('Shot "{}" sync done'.format(shot['name']))
         except Exception as e:
             raise Exception(
-                'Failed to create sequence shot build for "{}", '
+                'Failed to create sequence shot for "{}", '
                 'please check your ftrack permissions and for any existing '
                 'entities in conflict.\n\nDetails: {}'.format(shot_name, e)
             )
@@ -47,5 +45,5 @@ def register(api_object, **kw):
     if not isinstance(api_object, ftrack_api.Session):
         # Exit to avoid registering this plugin again.
         return
-    plugin = UnrealSequencePublisherContextPlugin(api_object)
+    plugin = UnrealShotPublisherContextPlugin(api_object)
     plugin.register()

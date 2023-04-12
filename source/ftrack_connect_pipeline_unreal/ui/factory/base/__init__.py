@@ -14,11 +14,13 @@ from ftrack_connect_pipeline_qt.ui.factory.ui_overrides import (
 from ftrack_connect_pipeline_qt.ui.factory import WidgetFactoryBase
 
 
-class UnrealBatchPublisherWidgetBaseFactory(WidgetFactoryBase):
-    '''Augmented widget factory for publisher client running in batch mode'''
+class UnrealBatchPublisherWidgetFactoryBase(WidgetFactoryBase):
+    '''Augmented widget factory for publisher client running in batch mode.
+
+    Candidate to be merged to framework core QT publisher client widget'''
 
     def __init__(self, event_manager, ui_types, parent=None):
-        super(UnrealBatchPublisherWidgetBaseFactory, self).__init__(
+        super(UnrealBatchPublisherWidgetFactoryBase, self).__init__(
             event_manager,
             ui_types,
             parent=parent,
@@ -44,11 +46,13 @@ class UnrealBatchPublisherWidgetBaseFactory(WidgetFactoryBase):
         raise NotImplementedError()
 
 
-class UnrealBatchPublisherItemWidgetBaseFactory(WidgetFactoryBase):
-    '''Augmented widget factory for a publishable item'''
+class UnrealBatchPublisherItemWidgetFactoryBase(WidgetFactoryBase):
+    '''Augmented widget factory for a publishable item
+
+    Candidate to be merged to framework core QT publisher client widget'''
 
     def __init__(self, event_manager, ui_types, parent=None):
-        super(UnrealBatchPublisherItemWidgetBaseFactory, self).__init__(
+        super(UnrealBatchPublisherItemWidgetFactoryBase, self).__init__(
             event_manager,
             ui_types,
             parent=parent,
@@ -63,7 +67,7 @@ class UnrealBatchPublisherItemWidgetBaseFactory(WidgetFactoryBase):
         self.definition = definition
 
     def build(self, main_widget):
-        '''(Redefine) Add'''
+        '''(Redefine) Build definition to *main_widget*'''
 
         # Create the components widget based on the definition
         (
@@ -103,7 +107,7 @@ class UnrealBatchPublisherItemWidgetBaseFactory(WidgetFactoryBase):
         return main_widget
 
     def build_progress_ui(self, item_id, ident):
-        '''Build only progress widget components, prepare to run.'''
+        '''Build progress widget components for item identified by *item_id* labeled *ident*.'''
         if not self.progress_widget:
             return
         for step in self.definition.get_all(category=core_constants.STEP):
@@ -112,12 +116,15 @@ class UnrealBatchPublisherItemWidgetBaseFactory(WidgetFactoryBase):
             if step_type != core_constants.FINALIZER:
                 if step.get('visible', True) is True:
                     self.progress_widget.add_step(
-                        step_type, step_name, batch_id=item_id
+                        step_type, step_name, batch_id=item_id, label=ident
                     )
             else:
                 for stage in step.get_all(category=core_constants.STAGE):
                     stage_name = stage.get('name')
                     if stage.get('visible', True) is True:
                         self.progress_widget.add_step(
-                            step_type, stage_name, batch_id=item_id
+                            step_type,
+                            stage_name,
+                            batch_id=item_id,
+                            label=ident,
                         )

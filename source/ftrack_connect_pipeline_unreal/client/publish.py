@@ -18,14 +18,15 @@ from ftrack_connect_pipeline_qt.ui.utility.widget import (
 )
 import ftrack_connect_pipeline_unreal.constants as unreal_constants
 from ftrack_connect_pipeline_unreal.ui.factory.batch_publisher import (
-    UnrealShotPublisherWidgetFactory,
+    UnrealShotPublisherWidgetFactoryBase,
 )
 from ftrack_connect_pipeline_unreal import utils as unreal_utils
 
 
 class UnrealQtPublisherClientBaseWidget(QtPublisherClientWidget):
-    '''Unreal publisher client widget base class contining batch publish logic,
-    candidate to be merged to QT publisher client widget'''
+    '''Unreal publisher client widget base class contining batch publish logic.
+
+    Candidate to be merged to framework core QT publisher client widget'''
 
     prepareNextItem = QtCore.Signal()
     queueNextItem = QtCore.Signal(object, object)
@@ -45,6 +46,7 @@ class UnrealQtPublisherClientBaseWidget(QtPublisherClientWidget):
     # Batch publish logic
 
     def set_run_callback_function(self, fn):
+        '''Set the callback function to be called when on :meth:`~ftrack_connect_pipeline.client.run_plugin'''
         self._run_callback_fn = fn
 
     def _run_callback(self, event):
@@ -74,6 +76,7 @@ class UnrealQtPublisherClientBaseWidget(QtPublisherClientWidget):
         self._processed_items = []
 
     def setup_widget_factory(self, widget_factory, definition):
+        '''Set up *widget_factory* with *definition* and set the host connection'''
         widget_factory.set_definition(definition)
         widget_factory.host_connection = self._host_connection
         widget_factory.set_definition_type(definition['type'])
@@ -143,8 +146,9 @@ class UnrealQtPublisherClientBaseWidget(QtPublisherClientWidget):
         self._run_queue_async.put((item_widget, definition))
 
     def _relay_run_signals_async(self):
-        '''Background thread running a loop polling for items and their definition to run, emitting run event'''
-
+        '''Background thread running a loop polling for items and their definition
+        to run, emitting run event. Unlocks QT to process events and paint widgets.
+        '''
         while not self._stop_run:
             # Get item to run
             if self._run_queue_async.empty():
@@ -171,7 +175,7 @@ class UnrealQtPublisherClientBaseWidget(QtPublisherClientWidget):
             self.logger.warning('Aborted batch publish')
 
     def run_post(self):
-        '''All items has been published, post process'''
+        '''All batch items have been published, post process'''
 
         self._stop_run = True
 
@@ -209,7 +213,7 @@ class UnrealQtPublisherClientBaseWidget(QtPublisherClientWidget):
             )
 
     def refresh(self, checked_items):
-        '''(Override)'''
+        '''(Override) Update run button label with *checked_items*'''
         self.run_button.setText(
             'PUBLISH{}'.format(
                 '({})'.format(len(checked_items))
@@ -248,7 +252,7 @@ class UnrealQtPublisherClientWidget(UnrealQtPublisherClientBaseWidget):
         items = None
         if definition:
             if definition['name'].lower().find('shot') > -1:
-                target_factory_class = UnrealShotPublisherWidgetFactory
+                target_factory_class = UnrealShotPublisherWidgetFactoryBase
                 self.batch = True
                 self.item_name = 'shot'
             # TODO: add support for batch publish of assets
@@ -257,11 +261,11 @@ class UnrealQtPublisherClientWidget(UnrealQtPublisherClientBaseWidget):
                 self.batch = False
             if self.widget_factory.__class__ != target_factory_class:
                 if target_factory_class != PublisherWidgetFactory:
-                    # Switch factory, will initialise batch_publisher_widget as needed
+                    # Switch factory, will initialise self.batch_publisher_widget as needed
                     self.widget_factory = target_factory_class(self)
                     if (
                         target_factory_class
-                        == UnrealShotPublisherWidgetFactory
+                        == UnrealShotPublisherWidgetFactoryBase
                     ):
                         # Locate shot tracks
                         selected_sequence = (
@@ -277,9 +281,11 @@ class UnrealQtPublisherClientWidget(UnrealQtPublisherClientBaseWidget):
                     self.widget_factory = target_factory_class(
                         self.event_manager, self.ui_types
                     )
+        # Have main widget built
         super(UnrealQtPublisherClientWidget, self).change_definition(
             definition, schema, component_names_filter
         )
+        # Populate batch publisher widget
         if definition and self.batch_publisher_widget:
             self.batch_publisher_widget.on_context_changed(self.context_id)
             if items:
