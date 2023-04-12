@@ -41,7 +41,7 @@ class UnrealSequencePublisherCollectorOptionsWidget(BaseOptionsWidget):
                 {'image_sequence_path': image_sequence_path}
             )
         else:
-            image_sequence_path = '<please choose am image sequence>'
+            image_sequence_path = '<please choose an image sequence>'
             self.set_option_result(None, 'image_sequence_path')
 
         # Update UI
