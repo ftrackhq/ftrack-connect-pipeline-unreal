@@ -132,7 +132,7 @@ class UnrealBatchPublisherWidgetBase(QtWidgets.QWidget):
 
         self.item_list.selectionUpdated.connect(self._item_selection_updated)
         # Have client reflect upon checked items
-        self.item_list.checkedUpdated.connect(self.client.refresh)
+        self.item_list.checkedUpdated.connect(self.client.checked_updated)
 
         self._update_info_label()
 
@@ -565,6 +565,7 @@ class UnrealItemWidgetBase(AccordionBaseWidget):
 
     def _build_options(self):
         '''Build options overlay with factory'''
+
         self.factory.listen_widget_updates()
         self.showing_options = (
             True  # Make sure fetch plugin results get to the right place
@@ -583,7 +584,7 @@ class UnrealItemWidgetBase(AccordionBaseWidget):
 
         self.factory.end_widget_updates()
 
-        self.factory.set_definition(updated_definition)
+        self.factory.definition = updated_definition
 
         # Clear out overlay, not needed anymore
         clear_layout(self.options_widget.main_widget.layout())

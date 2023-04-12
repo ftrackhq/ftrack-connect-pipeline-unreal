@@ -30,10 +30,10 @@ class UnrealShotPublisherWidgetFactoryBase(
         # Create shot publisher widget
 
         from ftrack_connect_pipeline_unreal.ui.batch_publisher.shot import (
-            UnrealShotPublisherWidgetUnreal,
+            UnrealShotPublisherWidget,
         )  # Prevent circular import
 
-        self.client.batch_publisher_widget = UnrealShotPublisherWidgetUnreal(
+        self.client.batch_publisher_widget = UnrealShotPublisherWidget(
             self.client
         )
 

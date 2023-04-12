@@ -36,9 +36,6 @@ class UnrealBatchPublisherWidgetFactoryBase(WidgetFactoryBase):
         '''Return the type of client'''
         return core_constants.PUBLISHER
 
-    def set_definition(self, definition):
-        self.definition = definition
-
     def build(
         self, definition, component_names_filter, component_extensions_filter
     ):
@@ -51,20 +48,28 @@ class UnrealBatchPublisherItemWidgetFactoryBase(WidgetFactoryBase):
 
     Candidate to be merged to framework core QT publisher client widget'''
 
+    @property
+    def definition(self):
+        '''Return the definition'''
+        return self._definition
+
+    @definition.setter
+    def definition(self, value):
+        '''Set the definition'''
+        self._definition = value
+
     def __init__(self, event_manager, ui_types, parent=None):
         super(UnrealBatchPublisherItemWidgetFactoryBase, self).__init__(
             event_manager,
             ui_types,
             parent=parent,
         )
+        self._definition = None
 
     @staticmethod
     def client_type():
         '''Return the type of client'''
         return core_constants.PUBLISHER
-
-    def set_definition(self, definition):
-        self.definition = definition
 
     def build(self, main_widget):
         '''(Redefine) Build definition to *main_widget*'''
@@ -107,7 +112,7 @@ class UnrealBatchPublisherItemWidgetFactoryBase(WidgetFactoryBase):
         return main_widget
 
     def build_progress_ui(self, item_id, ident):
-        '''Build progress widget components for item identified by *item_id* labeled *ident*.'''
+        '''Build progress widget components for item identified by *item_id*'''
         if not self.progress_widget:
             return
         for step in self.definition.get_all(category=core_constants.STEP):
@@ -116,15 +121,12 @@ class UnrealBatchPublisherItemWidgetFactoryBase(WidgetFactoryBase):
             if step_type != core_constants.FINALIZER:
                 if step.get('visible', True) is True:
                     self.progress_widget.add_step(
-                        step_type, step_name, batch_id=item_id, label=ident
+                        step_type, step_name, batch_id=item_id
                     )
             else:
                 for stage in step.get_all(category=core_constants.STAGE):
                     stage_name = stage.get('name')
                     if stage.get('visible', True) is True:
                         self.progress_widget.add_step(
-                            step_type,
-                            stage_name,
-                            batch_id=item_id,
-                            label=ident,
+                            step_type, stage_name, batch_id=item_id
                         )

@@ -32,15 +32,13 @@ from ftrack_connect_pipeline_qt.utils import clear_layout, set_property
 from ftrack_connect_pipeline_unreal import utils as unreal_utils
 
 
-class UnrealShotPublisherWidgetUnreal(UnrealBatchPublisherWidgetBase):
+class UnrealShotPublisherWidget(UnrealBatchPublisherWidgetBase):
     def __init__(
         self,
         client,
         parent=None,
     ):
-        super(UnrealShotPublisherWidgetUnreal, self).__init__(
-            client, parent=parent
-        )
+        super(UnrealShotPublisherWidget, self).__init__(client, parent=parent)
 
     @property
     def capture_folder(self):
@@ -119,7 +117,7 @@ class UnrealShotPublisherWidgetUnreal(UnrealBatchPublisherWidgetBase):
 
         self.layout().addWidget(line.Line(style='solid'))
 
-        super(UnrealShotPublisherWidgetUnreal, self).build()
+        super(UnrealShotPublisherWidget, self).build()
 
     def _update_info_label(self):
         '''(Override) Update info label'''
@@ -135,7 +133,7 @@ class UnrealShotPublisherWidgetUnreal(UnrealBatchPublisherWidgetBase):
 
     def post_build(self):
         '''(Override)'''
-        super(UnrealShotPublisherWidgetUnreal, self).post_build()
+        super(UnrealShotPublisherWidget, self).post_build()
         if self.sequence_context_selector:
             self.sequence_context_selector.entityChanged.connect(
                 self.on_sequence_context_changed
@@ -504,6 +502,52 @@ class UnrealShotWidgetUnreal(UnrealItemWidgetBase):
             self.setToolTip(
                 result or 'Could not find an rendered media for shot'
             )
+
+    def _store_options(self):
+        '''(Override) Store options in metadata'''
+        super(UnrealShotWidgetUnreal, self)._store_options()
+        tooltip = ''
+        # Update tooltip based on user input
+        for d_component in self.factory.definition.get_all(
+            type=core_constants.COMPONENT
+        ):
+            if d_component['name'] in ['sequence', 'reviewable']:
+                for plugin in d_component.get_all(
+                    type=core_constants.COLLECTOR,
+                    category=core_constants.PLUGIN,
+                ):
+                    if 'options' in plugin:
+                        has_media = False
+                        if (
+                            d_component['name'] == 'sequence'
+                            and len(
+                                plugin['options'].get('image_sequence_path')
+                                or ''
+                            )
+                            > 0
+                        ):
+                            tooltip += (
+                                'Publishing image sequence: {}<br>'.format(
+                                    plugin['options']['image_sequence_path']
+                                )
+                            )
+                            has_media = True
+                        elif (
+                            d_component['name'] == 'reviewable'
+                            and len(plugin['options'].get('movie_path') or '')
+                            > 0
+                        ):
+                            tooltip += (
+                                'Publishing reviewable movie: {}<br>'.format(
+                                    plugin['options']['movie_path']
+                                )
+                            )
+                            has_media = True
+                        plugin['enabled'] = has_media
+                        self.checked = has_media
+        if tooltip == '':
+            tooltip = 'Could not find an rendered media for shot'
+        self.setToolTip('<html>{}</html>'.format(tooltip))
 
     def run_callback(self, item_widget, event):
         '''(Override) Executed after an item has been publisher through event from pipeline'''

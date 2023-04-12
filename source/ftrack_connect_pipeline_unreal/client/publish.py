@@ -77,7 +77,7 @@ class UnrealQtPublisherClientBaseWidget(QtPublisherClientWidget):
 
     def setup_widget_factory(self, widget_factory, definition):
         '''Set up *widget_factory* with *definition* and set the host connection'''
-        widget_factory.set_definition(definition)
+        widget_factory.definition = definition
         widget_factory.host_connection = self._host_connection
         widget_factory.set_definition_type(definition['type'])
 
@@ -212,7 +212,7 @@ class UnrealQtPublisherClientBaseWidget(QtPublisherClientWidget):
                 ),
             )
 
-    def refresh(self, checked_items):
+    def checked_updated(self, checked_items):
         '''(Override) Update run button label with *checked_items*'''
         self.run_button.setText(
             'PUBLISH{}'.format(
@@ -259,28 +259,31 @@ class UnrealQtPublisherClientWidget(UnrealQtPublisherClientBaseWidget):
             else:
                 target_factory_class = PublisherWidgetFactory
                 self.batch = False
+            recreate_factory = False
             if self.widget_factory.__class__ != target_factory_class:
                 if target_factory_class != PublisherWidgetFactory:
-                    # Switch factory, will initialise self.batch_publisher_widget as needed
-                    self.widget_factory = target_factory_class(self)
-                    if (
-                        target_factory_class
-                        == UnrealShotPublisherWidgetFactoryBase
-                    ):
-                        # Locate shot tracks
-                        selected_sequence = (
-                            unreal_utils.get_selected_sequence()
-                        )
-                        if selected_sequence:
-                            # Get shot tracks
-                            items = unreal_utils.get_sequence_shots(
-                                selected_sequence
-                            )
+                    recreate_factory = True
                 else:
                     self.batch_publisher_widget = None
                     self.widget_factory = target_factory_class(
                         self.event_manager, self.ui_types
                     )
+            elif self.widget_factory.__class__ != PublisherWidgetFactory:
+                recreate_factory = True  # Refresh button clicked
+            if recreate_factory:
+                # Switch/recreate factory, will initialise self.batch_publisher_widget as needed
+                self.widget_factory = target_factory_class(self)
+                if (
+                    target_factory_class
+                    == UnrealShotPublisherWidgetFactoryBase
+                ):
+                    # Locate shot tracks
+                    selected_sequence = unreal_utils.get_selected_sequence()
+                    if selected_sequence:
+                        # Get shot tracks
+                        items = unreal_utils.get_sequence_shots(
+                            selected_sequence
+                        )
         # Have main widget built
         super(UnrealQtPublisherClientWidget, self).change_definition(
             definition, schema, component_names_filter
